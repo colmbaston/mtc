@@ -1,4 +1,4 @@
-module TAM (TAM(..), Label, formatTAM, exec, parseTAM, optimiseTAM) where
+module TAM (Label, Address, TAM(..), formatTAM, exec, parseTAM, optimiseTAM) where
 
 import           Data.Char
 import           Data.Maybe
@@ -20,28 +20,29 @@ import Control.Monad.Trans.Maybe
 import Parser
 import System.IO
 
-type Label = String
-data TAM   = LOADL Int
-           | ADD
-           | SUB
-           | MUL
-           | DIV
-           | NEG
-           | AND
-           | OR
-           | NOT
-           | EQL
-           | LSS
-           | GTR
-           | GETINT
-           | PUTINT
-           | LABEL   Label
-           | JUMP    Label
-           | JUMPIFZ Label
-           | LOAD    Int
-           | STORE   Int
-           | HALT
-           deriving Eq
+type Label   = String
+type Address = Int
+data TAM     = LOADL Int
+             | ADD
+             | SUB
+             | MUL
+             | DIV
+             | NEG
+             | AND
+             | OR
+             | NOT
+             | EQL
+             | LSS
+             | GTR
+             | GETINT
+             | PUTINT
+             | LABEL   Label
+             | JUMP    Label
+             | JUMPIFZ Label
+             | LOAD    Address
+             | STORE   Address
+             | HALT
+             deriving Eq
 
 -- PRINTING AND PARSING TAM CODE
 
@@ -100,7 +101,7 @@ inst = (string "LOADL"  $> LOADL) <*> (some (sat space (/= '\n')) *> integer) <|
        (string "STORE"   $> STORE)   <*> (some (sat space (/= '\n')) *> address) <|>
        (string "HALT"    $> HALT)
 
-address :: Parser Int
+address :: Parser Address
 address = string "[" *> trim natural <* string "]"
 
 label :: Parser Label
@@ -108,7 +109,7 @@ label = string "#" *> some (sat item isAlphaNum)
 
 -- EXECUTING TAM CODE
 
-type Machine m = MaybeT (StateT (Int, S.Seq Int) m)
+type Machine m = MaybeT (StateT (Address, Seq Int) m)
 
 increment :: Monad m => Machine m ()
 increment = lift (modify (first (+1)))
@@ -133,13 +134,13 @@ binOp op = do x <- pop
               push (op y x)
               increment
 
-load :: Monad m => Int -> Machine m ()
+load :: Monad m => Address -> Machine m ()
 load a = do xs <- snd <$> lift get
             let l = S.length xs
             maybe empty push (S.lookup (l - 1 - a) xs)
             increment
 
-store :: Monad m => Int -> Machine m ()
+store :: Monad m => Address -> Machine m ()
 store a = do xs <- snd <$> lift get
              let l = S.length xs
              if 0 <= a && a < l

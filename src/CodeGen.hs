@@ -23,7 +23,8 @@ instance Semigroup (DList a) where
 instance Monoid (DList a) where
   mempty = DList id
 
-type CodeGen m = MaybeT (WriterT (DList TAM) (StateT (Label, Map Identifier Int) m))
+type Environment = Map Identifier Address
+type CodeGen m   = MaybeT (WriterT (DList TAM) (StateT (Label, Environment) m))
 
 emit :: Monad m => [TAM] -> CodeGen m ()
 emit is = lift (tell (DList (is ++)))
@@ -36,10 +37,10 @@ nextLabel ( x :xs) = succ x :           xs
 freshLabel :: Monad m => CodeGen m Label
 freshLabel = lift (lift (state (\(l, m) -> (l, (nextLabel l, m)))))
 
-setAddress :: Monad m => Identifier -> Int -> CodeGen m ()
+setAddress :: Monad m => Identifier -> Address -> CodeGen m ()
 setAddress i a = lift (lift (modify (second (M.insert i a))))
 
-getAddress :: Monad m => Identifier -> CodeGen m Int
+getAddress :: Monad m => Identifier -> CodeGen m Address
 getAddress i = lift (lift get) >>= maybe empty pure . M.lookup i . snd
 
 load :: Monad m => Identifier -> CodeGen m ()
@@ -58,7 +59,7 @@ codeGenProg (Program ds c) = codeGenDecls ds *> codeGenCommand c *> emit [HALT]
 codeGenDecls :: Monad m => [Declaration] -> CodeGen m ()
 codeGenDecls = traverse_ codeGenDecl . zip [0..]
 
-codeGenDecl :: Monad m => (Int, Declaration) -> CodeGen m ()
+codeGenDecl :: Monad m => (Address, Declaration) -> CodeGen m ()
 codeGenDecl (a, Initialise i e) = codeGenExpr e *> setAddress i a
 
 codeGenCommand :: Monad m => Command -> CodeGen m ()
