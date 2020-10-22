@@ -106,9 +106,7 @@ treePrintExprPrefixed p (TernaryOp op x y z) =     showString "TernaryOp " . sho
 -- PROGRAM PARSER
 
 parseProgram :: String -> Maybe Program
-parseProgram src = case parse (trim prog) src of
-                     [(p, "")] -> Just p
-                     _         -> Nothing
+parseProgram src = fst <$> parse (trim prog <* eof) src
 
 prog :: Parser Program
 prog = Program <$> (string "let" *> some space *> decls)

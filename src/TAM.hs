@@ -72,9 +72,7 @@ formatInst (STORE    a) = "  STORE   " ++ '[' : show a ++ "]"
 formatInst  HALT        = "  HALT"
 
 parseTAM :: String -> Maybe [TAM]
-parseTAM src = case parse (trim code) src of
-                 [(is, "")] -> Just is
-                 _          -> Nothing
+parseTAM src = fst <$> parse (trim code <* eof) src
 
 code :: Parser [TAM]
 code = (:) <$> inst <*> (many (sat space (/= '\n')) *> newline *> many space *> code) <|> pure []
@@ -152,9 +150,9 @@ getInt :: IO Int
 getInt = do putStr "GETINT> "
             hFlush stdout
             xs <- getLine
-            case parse (trim integer) xs of
-              [(n, "")] -> pure n
-              _         -> putStrLn "could not parse as integer" *> getInt
+            maybe (putStrLn "could not parse input as integer" *> getInt)
+                  (pure . fst)
+                  (parse (trim integer <* eof) xs)
 
 type JumpTable = Map Label Int
 

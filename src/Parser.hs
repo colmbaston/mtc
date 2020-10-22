@@ -3,31 +3,24 @@ module Parser where
 import Data.Char
 import Data.Functor
 import Control.Applicative
+import Control.Monad.Trans.State
 
-newtype Parser a = P { parse :: String -> [(a, String)] }
+type Parser = StateT String Maybe
 
-instance Functor Parser where
-  fmap f px = P (\src -> [(f x, src') | (x, src') <- parse px src])
-
-instance Applicative Parser where
-  pure x    = P (\src -> [(x, src)])
-  pf <*> px = P (\src -> [(f x, src'') | (f, src' ) <- parse pf src,
-                                         (x, src'') <- parse px src'])
-
-instance Monad Parser where
-  px >>= f = P (\src -> [(y, src'') | (x, src' ) <- parse px    src,
-                                      (y, src'') <- parse (f x) src'])
-
-instance Alternative Parser where
-  empty     = P (const [])
-  px <|> py = P (\src -> case parse px src of
-                           [] -> parse py src
-                           xs -> xs)
+parse :: Parser a -> String -> Maybe (a, String)
+parse = runStateT
 
 item :: Parser Char
-item = P (\src -> case src of
-                    []     -> []
-                    (x:xs) -> [(x, xs)])
+item = do src <- get
+          case src of
+            []     -> empty
+            (x:xs) -> put xs $> x
+
+eof :: Parser ()
+eof = do src <- get
+         case src of
+           [] -> pure ()
+           _  -> empty
 
 sat :: Parser a -> (a -> Bool) -> Parser a
 sat px f = do x <- px
