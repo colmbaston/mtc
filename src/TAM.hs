@@ -224,11 +224,11 @@ optimiseTAM = fixedPoint (aliasLabels . peephole)
 
     peephole :: [TAM] -> [TAM]
     peephole []                                     = []
-    peephole (LOAD  a : STORE   b : xs) | a == b    =           peephole xs
-    peephole (JUMP  a : LABEL   b : xs) | a == b    = LABEL b : peephole xs
-    peephole (LOADL a : JUMPIFZ b : xs) | a == 0    = JUMP  b : peephole xs
-                                        | otherwise =           peephole xs
-    peephole (x:xs)                                 =       x : peephole xs
+    peephole (LOAD  a : STORE   b : xs) | a == b    =     peephole            xs
+    peephole (JUMP  a : LABEL   b : xs) | a == b    =     peephole (LABEL b : xs)
+    peephole (LOADL a : JUMPIFZ b : xs) | a == 0    =     peephole (JUMP  b : xs)
+                                        | otherwise =     peephole            xs
+    peephole (x:xs)                                 = x : peephole            xs
 
     aliasLabels :: [TAM] -> [TAM]
     aliasLabels is = foldr (mapMaybe . uncurry relabel) is (labelPairs (zip is (tail is)))
