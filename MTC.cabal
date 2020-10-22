@@ -9,6 +9,7 @@ build-type:          Simple
 executable mtc
   default-language:    Haskell2010
   ghc-options:         -Wall
+  hs-source-dirs:      src
   main-is:             Main.hs
   other-modules:       Parser, AST, CodeGen, TAM
   build-depends:       base         ^>= 4.14,
