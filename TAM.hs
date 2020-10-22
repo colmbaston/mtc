@@ -7,10 +7,9 @@ import           Data.Functor
 import           Data.Bifunctor
 import           Data.Map      (Map)
 import qualified Data.Map      as M
-import           Data.Vector   (Vector, (!?))
-import qualified Data.Vector   as V
 import           Data.Sequence (Seq(..), (<|))
 import qualified Data.Sequence as S
+import           Data.Array
 
 import Control.Applicative
 import Control.Monad.IO.Class
@@ -163,19 +162,24 @@ jumpTable _ js []             = (js, [])
 jumpTable n js (LABEL l : is) =              jumpTable  n (M.insert l n js) is
 jumpTable n js (      i : is) = second (i:) (jumpTable (n+1)            js  is)
 
+instArray :: [TAM] -> (Int, Array Int TAM)
+instArray is = let l = length is in (l, listArray (0, l-1) is)
+
 exec :: [TAM] -> IO (Maybe [Int])
 exec is = (\(m, (_, st)) -> m $> toList st) <$> runStateT (runMaybeT run) (0, S.empty)
   where
-    jt :: JumpTable
-    iv :: Vector TAM
-    (jt, iv) = second V.fromList (jumpTable 0 M.empty is)
+    jt  :: JumpTable
+    ia  :: Array Int TAM
+    len :: Int
+    (jt, (len, ia)) = second instArray (jumpTable 0 M.empty is)
 
     run :: MonadIO m => Machine m ()
     run = do pc <- fst <$> lift get
-             case iv !? pc of
-               Nothing   -> empty
-               Just HALT -> pure ()
-               Just i    -> step i *> run
+             if pc < 0 || pc >= len
+               then empty
+               else case ia ! pc of
+                      HALT -> pure ()
+                      i    -> step i *> run
 
     step :: MonadIO m => TAM -> Machine m ()
     step (LOADL n)   = push n *> increment
