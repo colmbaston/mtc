@@ -7,6 +7,8 @@ import CodeGen
 import System.Exit
 import System.FilePath
 import System.Environment
+import Data.Maybe
+import Control.Monad
 import Control.Exception
 
 main :: IO ()
@@ -84,4 +86,4 @@ writeTAM :: FilePath -> [TAM] -> IO ()
 writeTAM file code = writeFileChecked file (formatTAM code) *> putStr "TAM code written to " *> putStrLn file
 
 runTAM :: [TAM] -> IO ()
-runTAM code = exec code >>= maybe (putStrLn "error: could not complete exection (e.g. division by zero or stack underflow)") print
+runTAM code = exec code >>= flip when (putStrLn "error: could not complete exection (e.g. division by zero or stack underflow)") . isNothing

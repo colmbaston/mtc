@@ -14,8 +14,12 @@ module AST
 where
 
 import Parser
+import Data.Char
 import Data.Functor
 import Control.Applicative
+
+import           Data.Set (Set)
+import qualified Data.Set as S
 
 type Identifier  = String
 data Program     = Program [Declaration] Command
@@ -129,6 +133,12 @@ command = Assign   <$> identifier <*> (trim (string ":=") *> expr) <|>
 
 commands :: Parser [Command]
 commands = (:) <$> command <*> ((trim (string ";") *> commands) <|> pure [])
+
+keywords :: Set Identifier
+keywords = S.fromAscList ["begin", "do", "else", "end", "getint", "if", "in", "let", "printint", "then", "var", "while"]
+
+identifier :: Parser Identifier
+identifier = sat ((:) <$> sat item isAlpha <*> many (sat item isAlphaNum)) (`S.notMember` keywords)
 
 -- EXPRESSION PARSER
 

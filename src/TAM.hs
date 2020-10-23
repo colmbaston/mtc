@@ -1,13 +1,12 @@
-module TAM (Label, Address, TAM(..), formatTAM, exec, parseTAM, optimiseTAM) where
+module TAM (Label, Address, TAM(..), formatTAM, exec, execWithStack, parseTAM, optimiseTAM) where
 
 import           Data.Char
 import           Data.Maybe
-import           Data.Foldable
 import           Data.Functor
 import           Data.Bifunctor
 import           Data.Map      (Map)
 import qualified Data.Map      as M
-import           Data.Sequence (Seq(..), (<|))
+import           Data.Sequence (Seq(..), (|>))
 import qualified Data.Sequence as S
 import           Data.Array
 
@@ -78,21 +77,21 @@ code :: Parser [TAM]
 code = (:) <$> inst <*> (many (sat space (/= '\n')) *> newline *> many space *> code) <|> pure []
 
 inst :: Parser TAM
-inst = (string "LOADL"  $> LOADL) <*> (some (sat space (/= '\n')) *> integer) <|>
-       (string "ADD"    $> ADD)    <|>
-       (string "SUB"    $> SUB)    <|>
-       (string "MUL"    $> MUL)    <|>
-       (string "DIV"    $> DIV)    <|>
-       (string "NEG"    $> NEG)    <|>
-       (string "AND"    $> AND)    <|>
-       (string "OR"     $> OR )    <|>
-       (string "NOT"    $> NOT)    <|>
-       (string "EQL"    $> EQL)    <|>
-       (string "LSS"    $> LSS)    <|>
-       (string "GTR"    $> GTR)    <|>
-       (string "GETINT" $> GETINT) <|>
-       (string "PUTINT" $> PUTINT) <|>
-       (LABEL <$> label <* string ":") <|>
+inst = (string "LOADL"  $> LOADL) <*> (some (sat space (/= '\n')) *> integer)    <|>
+       (string "ADD"    $> ADD)                                                  <|>
+       (string "SUB"    $> SUB)                                                  <|>
+       (string "MUL"    $> MUL)                                                  <|>
+       (string "DIV"    $> DIV)                                                  <|>
+       (string "NEG"    $> NEG)                                                  <|>
+       (string "AND"    $> AND)                                                  <|>
+       (string "OR"     $> OR )                                                  <|>
+       (string "NOT"    $> NOT)                                                  <|>
+       (string "EQL"    $> EQL)                                                  <|>
+       (string "LSS"    $> LSS)                                                  <|>
+       (string "GTR"    $> GTR)                                                  <|>
+       (string "GETINT" $> GETINT)                                               <|>
+       (string "PUTINT" $> PUTINT)                                               <|>
+       (LABEL <$> label <* string ":")                                           <|>
        (string "JUMP"    $> JUMP)    <*> (some (sat space (/= '\n')) *> label)   <|>
        (string "JUMPIFZ" $> JUMPIFZ) <*> (some (sat space (/= '\n')) *> label)   <|>
        (string "LOAD"    $> LOAD)    <*> (some (sat space (/= '\n')) *> address) <|>
@@ -113,13 +112,13 @@ increment :: Monad m => Machine m ()
 increment = lift (modify (first (+1)))
 
 push :: Monad m => Int -> Machine m ()
-push x = lift (modify (second (x <|)))
+push x = lift (modify (second (|> x)))
 
 pop :: Monad m => Machine m Int
 pop = do xs <- snd <$> lift get
          case xs of
            Empty    -> empty
-           y :<| ys -> lift (modify (second (const ys))) $> y
+           ys :|> y -> lift (modify (second (const ys))) $> y
 
 unOp :: Monad m => (Int -> Int) -> Machine m ()
 unOp op = do x <- pop
@@ -133,18 +132,13 @@ binOp op = do x <- pop
               increment
 
 load :: Monad m => Address -> Machine m ()
-load a = do xs <- snd <$> lift get
-            let l = S.length xs
-            maybe empty push (S.lookup (l - 1 - a) xs)
-            increment
+load a = lift get >>= maybe empty push . S.lookup a . snd >> increment
 
 store :: Monad m => Address -> Machine m ()
 store a = do xs <- snd <$> lift get
-             let l = S.length xs
-             if 0 <= a && a < l
-               then pop >>= lift . modify . second . S.update (l - 2 - a)
+             if 0 <= a && a < S.length xs
+               then pop >>= lift . modify . second . S.update a >> increment
                else empty
-             increment
 
 getInt :: IO Int
 getInt = do putStr "GETINT> "
@@ -164,8 +158,11 @@ jumpTable n js (      i : is) = second (i:) (jumpTable (n+1)            js  is)
 instArray :: [TAM] -> (Int, Array Int TAM)
 instArray is = let l = length is in (l, listArray (0, l-1) is)
 
-exec :: [TAM] -> IO (Maybe [Int])
-exec is = (\(m, (_, st)) -> m $> toList st) <$> runStateT (runMaybeT run) (0, S.empty)
+exec :: [TAM] -> IO (Maybe (Seq Int))
+exec = execWithStack S.empty
+
+execWithStack :: Seq Int -> [TAM] -> IO (Maybe (Seq Int))
+execWithStack xs is = (\(m, (_, ys)) -> m $> ys) <$> runStateT (runMaybeT run) (0, xs)
   where
     jt  :: JumpTable
     ia  :: Array Int TAM
@@ -174,23 +171,18 @@ exec is = (\(m, (_, st)) -> m $> toList st) <$> runStateT (runMaybeT run) (0, S.
 
     run :: MonadIO m => Machine m ()
     run = do pc <- fst <$> lift get
-             if pc < 0 || pc >= len
-               then empty
-               else case ia ! pc of
-                      HALT -> pure ()
+             if 0 <= pc && pc < len
+               then case ia ! pc of
+                      HALT -> liftIO (putStrLn "HALTED")
                       i    -> step i *> run
+               else empty
 
     step :: MonadIO m => TAM -> Machine m ()
     step (LOADL n)   = push n *> increment
     step  ADD        = binOp (+)
     step  SUB        = binOp (-)
     step  MUL        = binOp (*)
-    step  DIV        = do x <- pop
-                          y <- pop
-                          if x == 0
-                            then empty
-                            else push (y `div` x)
-                          increment
+    step  DIV        = pop >>= \x -> pop >>= \y -> if x == 0 then empty else push (y `div` x) >> increment
     step  NEG        = unOp negate
     step  AND        = binOp (\a b -> fromEnum (a /= 0 && b /= 0))
     step  OR         = binOp (\a b -> fromEnum (a /= 0 || b /= 0))
@@ -198,25 +190,19 @@ exec is = (\(m, (_, st)) -> m $> toList st) <$> runStateT (runMaybeT run) (0, S.
     step  EQL        = binOp (\x y -> fromEnum (x == y))
     step  LSS        = binOp (\x y -> fromEnum (x <  y))
     step  GTR        = binOp (\x y -> fromEnum (x >  y))
-    step  GETINT     = (liftIO getInt >>= push) *> increment
-    step  PUTINT     = (pop >>= liftIO . print) *> increment
-    step (JUMP l)    = case M.lookup l jt of
-                         Nothing -> empty
-                         Just pc -> lift (modify (first (const pc)))
-    step (JUMPIFZ l) = do x <- pop
-                          if x == 0
-                            then step (JUMP l)
-                            else increment
+    step  GETINT     = liftIO getInt >>= push >> increment
+    step  PUTINT     = pop >>= liftIO . print >> increment
+    step (JUMP l)    = maybe empty (lift . modify . first . const) (M.lookup l jt)
+    step (JUMPIFZ l) = pop >>= \x -> if x == 0 then step (JUMP l) else increment
     step (LOAD  a)   = load  a
     step (STORE a)   = store a
-
     step (LABEL _)   = error "step called on LABEL"
     step  HALT       = error "step called on HALT"
 
 -- OPTIMISING TAM CODE
 
 optimiseTAM :: [TAM] -> [TAM]
-optimiseTAM = fixedPoint (aliasLabels . peephole)
+optimiseTAM = fixedPoint (mergeLabels . peephole)
   where
     fixedPoint :: Eq a => (a -> a) -> a -> a
     fixedPoint f x = let y = f x in if x == y then y else fixedPoint f y
@@ -229,8 +215,8 @@ optimiseTAM = fixedPoint (aliasLabels . peephole)
                                         | otherwise =     peephole            xs
     peephole (x:xs)                                 = x : peephole            xs
 
-    aliasLabels :: [TAM] -> [TAM]
-    aliasLabels is = foldr (mapMaybe . uncurry relabel) is (labelPairs (zip is (tail is)))
+    mergeLabels :: [TAM] -> [TAM]
+    mergeLabels is = foldr (mapMaybe . uncurry relabel) is (labelPairs (zip is (tail is)))
       where
         labelPairs :: [(TAM, TAM)] -> [(Label, Label)]
         labelPairs []                        = []

@@ -58,9 +58,6 @@ pair px py = (,) <$> px <*> py
 chainl1 :: Parser a -> Parser (a -> a -> a) -> Parser a
 chainl1 px pf = foldl (\a (f, y) -> a `f` y) <$> px <*> many (pair pf px)
 
-identifier :: Parser String
-identifier = (:) <$> sat item isAlpha <*> many (sat item isAlphaNum)
-
 natural :: Parser Int
 natural = read <$> some (sat item isDigit)
 
