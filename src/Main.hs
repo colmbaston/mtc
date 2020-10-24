@@ -63,13 +63,13 @@ readFileChecked :: FilePath -> IO String
 readFileChecked file = catch (readFile file) (readFileError file)
 
 readFileError :: FilePath -> IOError -> IO a
-readFileError file _ =  putStr "error: failed to read "  *> putStr file *> putStrLn " from the filesystem" *> exitFailure
+readFileError file _ =  putStr "error: failed to read " *> putStr file *> putStrLn " from the filesystem" *> exitFailure
 
 writeFileChecked :: FilePath -> String -> IO ()
 writeFileChecked file contents = catch (writeFile file contents) (writeFileError file)
 
 writeFileError :: FilePath -> IOError -> IO a
-writeFileError file _ = putStr "error: failed to write " *> putStr file *> putStrLn " to the filesystem"   *> exitFailure
+writeFileError file _ = putStr "error: failed to write " *> putStr file *> putStrLn " to the filesystem" *> exitFailure
 
 -- MODE HANDLING
 
@@ -77,7 +77,7 @@ readMT :: FilePath -> IO Program
 readMT file = readFileChecked file >>= maybe (putStr "error: failed to parse " *> putStr file *> putStrLn " as an MT program" *> exitFailure) pure . parseProgram
 
 compileMT :: Program -> IO [TAM]
-compileMT = maybe (putStrLn "error: failed to generate code for MT program (e.g. use of an undeclared variable)" *> exitFailure) (pure . optimiseTAM) . codeGen
+compileMT = maybe (putStrLn "error: failed to generate code for MT program (e.g. use of an undeclared variable or a duplicate variable declaraion)" *> exitFailure) (pure . optimiseTAM) . codeGen
 
 readTAM :: FilePath -> IO [TAM]
 readTAM file = readFileChecked file >>= maybe (putStr "error: failed to parse " *> putStr file *> putStrLn " as a TAM program" *> exitFailure) pure . parseTAM

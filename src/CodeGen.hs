@@ -38,7 +38,10 @@ freshLabel :: Monad m => CodeGen m Label
 freshLabel = lift (lift (state (\(l, m) -> (l, (nextLabel l, m)))))
 
 setAddress :: Monad m => Identifier -> Address -> CodeGen m ()
-setAddress i a = lift (lift (modify (second (M.insert i a))))
+setAddress i a = do env <- snd <$> lift (lift get)
+                    case M.insertLookupWithKey (\_ x _ -> x) i a env of
+                      (Nothing, env') -> lift (lift (modify (second (const env'))))
+                      (Just  _,    _) -> empty
 
 getAddress :: Monad m => Identifier -> CodeGen m Address
 getAddress i = lift (lift get) >>= maybe empty pure . M.lookup i . snd
