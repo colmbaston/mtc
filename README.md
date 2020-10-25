@@ -4,7 +4,7 @@ A simple compiler for a fragment of the MiniTriangle language, written in Haskel
 The compiler was written for demonstration purposes while I was a teaching assistant on the Compilers module at the [School of Computer Science, University of Nottingham](https://www.nottingham.ac.uk/computerscience/).
 
 ```
-./mtc examples/fact.mt --ast
+> ./mtc examples/fact.mt --ast
 Program
 ├── Declarations
 │   ├── Initialise
@@ -54,9 +54,9 @@ Program
 ```
 
 ```
-./mtc example.exp
+> ./mtc example.exp
 TAM code written to file examples/fact.tam
-./mtc examples/fact.tam
+> ./mtc examples/fact.tam
 GETINT> 10
 3628800
 HALTED
