@@ -43,7 +43,7 @@ data TAM     = LOADL Int
              | HALT
              deriving Eq
 
--- PRINTING AND PARSING TAM CODE
+-- FORMATTING TAM CODE
 
 formatTAM :: [TAM] -> String
 formatTAM = unlines . map formatInst
@@ -69,6 +69,8 @@ formatInst (JUMPIFZ  l) = "  JUMPIFZ " ++ '#' : l
 formatInst (LOAD     a) = "  LOAD    " ++ '[' : show a ++ "]"
 formatInst (STORE    a) = "  STORE   " ++ '[' : show a ++ "]"
 formatInst  HALT        = "  HALT"
+
+-- PARSING TAM CODE
 
 parseTAM :: String -> Maybe [TAM]
 parseTAM src = fst <$> parse (trim code <* eof) src
