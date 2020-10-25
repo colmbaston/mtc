@@ -1,7 +1,7 @@
 module Main where
 
 import AST
-import TreePrint
+import Display
 import CodeGen
 import TAM
 
@@ -16,8 +16,8 @@ main :: IO ()
 main = do Args file mode <- validateArgs
           case mode of
             Compile -> readMT  file >>= compileMT >>= writeTAM (replaceExtension file ".tam")
-            AST     -> readMT  file >>= astPrint
-            CST     -> readMT  file >>= cstPrint
+            AST     -> readMT  file >>= putStrLn . astDisplay
+            CST     -> readMT  file >>= putStrLn . cstDisplay
             RunMT   -> readMT  file >>= compileMT >>= runTAM
             RunTAM  -> readTAM file >>= runTAM
 
