@@ -8,7 +8,6 @@ module AST
   UnaryOp(..),
   BinaryOp(..),
   TernaryOp(..),
-  astPrint,
   parseProgram,
 )
 where
@@ -39,7 +38,7 @@ data Expr = Literal   Int
 
 data UnaryOp = IntegerNegation
              | BooleanNegation
-             deriving Show
+             deriving (Eq, Show)
 
 data BinaryOp = Addition
               | Subtraction
@@ -50,62 +49,12 @@ data BinaryOp = Addition
               | Equal
               | NotEqual
               | Less
+              | Greater
               | LessEqual
               | GreaterEqual
-              | Greater
-              deriving Show
+              deriving (Eq, Show)
 
-data TernaryOp = Conditional deriving Show
-
--- PRINT AST AS A TREE
-
-astPrint :: Program -> IO ()
-astPrint p = putStrLn (treePrintProgPrefixed id p "")
-
-treePrintProgPrefixed :: ShowS -> Program -> ShowS
-treePrintProgPrefixed p (Program ds c) =     showString "Program\n"
-                                       . p . showString "├── Declarations\n" . treePrintListPrefixed treePrintDeclPrefixed (p . showString "│   ") ds . showChar '\n'
-                                       . p . showString "└── "               . treePrintCommandPrefixed   (p . showString "    ") c
-
-treePrintListPrefixed :: (ShowS -> a -> ShowS) -> ShowS -> [a] -> ShowS
-treePrintListPrefixed _ _ []     = id
-treePrintListPrefixed f p [x]    = p . showString "└── " . f (p . showString "    ") x
-treePrintListPrefixed f p (x:xs) = p . showString "├── " . f (p . showString "│   ") x . showChar '\n' . treePrintListPrefixed f p xs
-
-treePrintDeclPrefixed :: ShowS -> Declaration -> ShowS
-treePrintDeclPrefixed p (Initialise i e) =     showString "Initialise\n"
-                                         . p . showString "├── Variable " . shows i . showChar '\n'
-                                         . p . showString "└── " . treePrintExprPrefixed (p . showString "    ") e
-
-treePrintCommandPrefixed :: ShowS -> Command -> ShowS
-treePrintCommandPrefixed p (Assign i e) =     showString "Assign\n"
-                                        . p . showString "├── Variable " . shows i . showChar '\n'
-                                        . p . showString "└── " . treePrintExprPrefixed (p . showString "    ") e
-treePrintCommandPrefixed p (If e t f)   =     showString "If\n"
-                                        . p . showString "├── " . treePrintExprPrefixed    (p . showString "│   ") e . showChar '\n'
-                                        . p . showString "├── " . treePrintCommandPrefixed (p . showString "│   ") t . showChar '\n'
-                                        . p . showString "└── " . treePrintCommandPrefixed (p . showString "    ") f
-treePrintCommandPrefixed p (While e c)  =     showString "While\n"
-                                        . p . showString "├── " . treePrintExprPrefixed    (p . showString "│   ") e . showChar '\n'
-                                        . p . showString "└── " . treePrintCommandPrefixed (p . showString "    ") c
-treePrintCommandPrefixed p (GetInt i)   =     showString "GetInt\n"
-                                        . p . showString "└── Variable " . shows i
-treePrintCommandPrefixed p (PrintInt e) =     showString "PrintInt\n"
-                                        . p . showString "└── " . treePrintExprPrefixed (p . showString "    ") e
-treePrintCommandPrefixed p (Block cs)   =     showString "Block\n" . treePrintListPrefixed treePrintCommandPrefixed p cs
-
-treePrintExprPrefixed :: ShowS -> Expr -> ShowS
-treePrintExprPrefixed _ (Literal n)          =     showString "Literal "   . shows n
-treePrintExprPrefixed _ (Variable i)         =     showString "Variable "  . shows i
-treePrintExprPrefixed p (UnaryOp op x)       =     showString "UnaryOp "   . shows op                                  . showChar '\n'
-                                             . p . showString "└── " . treePrintExprPrefixed (p . showString "    ") x
-treePrintExprPrefixed p (BinaryOp op x y)    =     showString "BinaryOp "  . shows op                                  . showChar '\n'
-                                             . p . showString "├── " . treePrintExprPrefixed (p . showString "│   ") x . showChar '\n'
-                                             . p . showString "└── " . treePrintExprPrefixed (p . showString "    ") y
-treePrintExprPrefixed p (TernaryOp op x y z) =     showString "TernaryOp " . shows op                                  . showChar '\n'
-                                             . p . showString "├── " . treePrintExprPrefixed (p . showString "│   ") x . showChar '\n'
-                                             . p . showString "├── " . treePrintExprPrefixed (p . showString "│   ") y . showChar '\n'
-                                             . p . showString "└── " . treePrintExprPrefixed (p . showString "    ") z
+data TernaryOp = Conditional deriving (Eq, Show)
 
 -- PROGRAM PARSER
 
@@ -155,16 +104,12 @@ disjExpr :: Parser Expr
 disjExpr = chainl1 conjExpr (trim (string "||" $> BinaryOp Disjunction))
 
 conjExpr :: Parser Expr
-conjExpr = chainl1 equExpr (trim (string "&&" $> BinaryOp Conjunction))
-
-equExpr :: Parser Expr
-equExpr = do x <- relExpr
-             BinaryOp <$> trim (string "==" $> Equal <|>
-                                string "!=" $> NotEqual) <*> pure x <*> relExpr <|> pure x
+conjExpr = chainl1 relExpr (trim (string "&&" $> BinaryOp Conjunction))
 
 relExpr :: Parser Expr
 relExpr = do x <- addExpr
-             BinaryOp <$> trim (string "<" *> (string "=" $> LessEqual    <|> pure Less)     <|>
+             BinaryOp <$> trim (string "==" $> Equal <|> string "!=" $> NotEqual             <|>
+                                string "<" *> (string "=" $> LessEqual    <|> pure Less)     <|>
                                 string ">" *> (string "=" $> GreaterEqual <|> pure Greater)) <*> pure x <*> addExpr <|> pure x
 
 addExpr :: Parser Expr
@@ -176,7 +121,7 @@ mulExpr  = chainl1 atomExpr (trim (BinaryOp <$> (string "*" $> Multiplication <|
                                                  string "/" $> Division)))
 
 atomExpr :: Parser Expr
-atomExpr  =   Literal  <$> natural
+atomExpr  = Literal  <$> natural
          <|>  Variable <$> identifier
          <|>  parens (trim expr)
          <|>  UnaryOp <$> trimR (string "-" $> IntegerNegation  <|>

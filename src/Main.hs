@@ -1,8 +1,9 @@
 module Main where
 
 import AST
-import TAM
+import TreePrint
 import CodeGen
+import TAM
 
 import System.Exit
 import System.FilePath
@@ -16,13 +17,14 @@ main = do Args file mode <- validateArgs
           case mode of
             Compile -> readMT  file >>= compileMT >>= writeTAM (replaceExtension file ".tam")
             AST     -> readMT  file >>= astPrint
+            CST     -> readMT  file >>= cstPrint
             RunMT   -> readMT  file >>= compileMT >>= runTAM
             RunTAM  -> readTAM file >>= runTAM
 
 -- COMMAND-LINE ARGUMENT HANDLING
 
 data Args = Args FilePath Mode
-data Mode = Compile | AST | RunMT | RunTAM
+data Mode = Compile | AST | CST | RunMT | RunTAM
 
 validateArgs :: IO Args
 validateArgs = do args <- getArgs
@@ -31,6 +33,7 @@ validateArgs = do args <- getArgs
                     [file, "--compile"] -> validateFile file (Just Compile)  Nothing
                     [file, "--run"]     -> validateFile file (Just RunMT)   (Just RunTAM)
                     [file, "--ast"]     -> validateFile file (Just AST)      Nothing
+                    [file, "--cst"]     -> validateFile file (Just CST)      Nothing
                     _                   -> usageFail
 
 validateFile :: FilePath -> Maybe Mode -> Maybe Mode -> IO Args
@@ -51,7 +54,8 @@ usageFail = do p <- getProgName
                putStrLn ""
                putStrLn "Modes available for MT code:"
                putStrLn "  --compile  compile the program to TAM code and write it to a file (default)"
-               putStrLn "  --ast      print the AST of the program"
+               putStrLn "  --ast      print the abstract syntax tree of the program"
+               putStrLn "  --cst      print the concrete syntax tree of the program"
                putStrLn ""
                putStrLn "Modes available for TAM code (MT code will be implicitly compiled first):"
                putStrLn "  --run      execute a TAM program to its final stack (default)"
