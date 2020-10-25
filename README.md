@@ -54,7 +54,7 @@ Program
 ```
 
 ```
-> ./mtc example.exp
+> ./mtc examples/fact.mt
 TAM code written to file examples/fact.tam
 > ./mtc examples/fact.tam
 GETINT> 10
