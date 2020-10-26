@@ -216,11 +216,10 @@ optimiseTAM = fixedPoint (fixedPoint mergeLabels . peephole)
     peephole (LOADL a : JUMPIFZ b : xs) | a == 0    =     peephole (JUMP  b : xs)
                                         | otherwise =     peephole            xs
     peephole       (x : NEG : NEG : xs)             =     peephole       (x : xs)
-    peephole       (x : NOT : NOT : xs) | boolean x =     peephole       (x : xs)
-    peephole       (x :             xs)             = x : peephole            xs
-
-    boolean :: TAM -> Bool
-    boolean = (`elem` [AND, OR, NOT, EQL, LSS, GTR])
+    peephole       (x : NOT : NOT : xs) | booleanOp =     peephole       (x : xs)
+                                        where
+                                          booleanOp = x `elem` [AND, OR, NOT, EQL, LSS, GTR]
+    peephole                   (x : xs)             = x : peephole            xs
 
     mergeLabels :: [TAM] -> [TAM]
     mergeLabels is = foldr (\(a, b) -> mapMaybe (relabel a b)) is (alias (zip is (tail is)))
