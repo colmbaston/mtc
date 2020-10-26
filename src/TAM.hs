@@ -204,7 +204,7 @@ execWithStack xs is = (\(m, (_, ys)) -> m $> ys) <$> runStateT (runMaybeT run) (
 -- OPTIMISING TAM CODE
 
 optimiseTAM :: [TAM] -> [TAM]
-optimiseTAM = fixedPoint (mergeLabels . peephole)
+optimiseTAM = fixedPoint (fixedPoint mergeLabels . peephole)
   where
     fixedPoint :: Eq a => (a -> a) -> a -> a
     fixedPoint f x = let y = f x in if x == y then y else fixedPoint f y
@@ -223,13 +223,13 @@ optimiseTAM = fixedPoint (mergeLabels . peephole)
     boolean = (`elem` [AND, OR, NOT, EQL, LSS, GTR])
 
     mergeLabels :: [TAM] -> [TAM]
-    mergeLabels is = foldr (mapMaybe . uncurry relabel) is (labelPairs (zip is (tail is)))
+    mergeLabels is = foldr (\(a, b) -> mapMaybe (relabel a b)) is (alias (zip is (tail is)))
       where
-        labelPairs :: [(TAM, TAM)] -> [(Label, Label)]
-        labelPairs []                        = []
-        labelPairs ((LABEL a, LABEL b) : ls) = (a, b) : labelPairs ls
-        labelPairs ((LABEL a, JUMP  b) : ls) = (a, b) : labelPairs ls
-        labelPairs (                 _ : ls) =          labelPairs ls
+        alias :: [(TAM, TAM)] -> Maybe (Label, Label)
+        alias []                        = Nothing
+        alias ((LABEL a, LABEL b) :  _) = Just (a, b)
+        alias ((LABEL a, JUMP  b) :  _) = Just (a, b)
+        alias ( _                 : ls) = alias ls
 
         relabel :: Label -> Label -> TAM -> Maybe TAM
         relabel a _ (LABEL    c) | c == a = Nothing
