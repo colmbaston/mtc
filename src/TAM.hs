@@ -198,8 +198,8 @@ execWithStack xs is = (\(m, (_, ys)) -> m $> ys) <$> runStateT (runMaybeT run) (
     step (JUMPIFZ l) = pop >>= \x -> if x == 0 then step (JUMP l) else increment
     step (LOAD  a)   = load  a
     step (STORE a)   = store a
-    step (LABEL _)   = error "step called on LABEL"
-    step  HALT       = error "step called on HALT"
+    step (LABEL _)   = error "should be unreachable: step called on LABEL"
+    step  HALT       = error "should be unreachable: step called on HALT"
 
 -- OPTIMISING TAM CODE
 
