@@ -4,7 +4,7 @@
   LOADL   0
   GETINT
   STORE   [0]
-#a:
+#0:
   LOAD    [2]
   LOAD    [1]
   LOAD    [1]
@@ -13,20 +13,20 @@
   GTR
   NOT
   AND
-  JUMPIFZ #b
+  JUMPIFZ #1
   LOAD    [0]
   STORE   [3]
-#c:
+#2:
   LOAD    [3]
   LOADL   0
   GTR
-  JUMPIFZ #d
+  JUMPIFZ #3
   LOAD    [3]
   LOAD    [1]
   SUB
   STORE   [3]
-  JUMP    #c
-#d:
+  JUMP    #2
+#3:
   LOAD    [3]
   LOADL   0
   EQL
@@ -35,17 +35,17 @@
   LOAD    [1]
   LOADL   2
   EQL
-  JUMPIFZ #e
+  JUMPIFZ #4
   LOADL   3
   STORE   [1]
-  JUMP    #a
-#e:
+  JUMP    #0
+#4:
   LOAD    [1]
   LOADL   2
   ADD
   STORE   [1]
-  JUMP    #a
-#b:
+  JUMP    #0
+#1:
   LOAD    [0]
   LOADL   2
   LSS

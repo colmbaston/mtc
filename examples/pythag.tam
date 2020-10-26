@@ -6,28 +6,28 @@
   STORE   [3]
   LOADL   1
   STORE   [2]
-#a:
+#0:
   LOAD    [2]
   LOAD    [3]
   GTR
   NOT
-  JUMPIFZ #b
+  JUMPIFZ #1
   LOADL   1
   STORE   [1]
-#c:
+#2:
   LOAD    [1]
   LOAD    [2]
   GTR
   NOT
-  JUMPIFZ #d
+  JUMPIFZ #3
   LOADL   1
   STORE   [0]
-#e:
+#4:
   LOAD    [0]
   LOAD    [1]
   GTR
   NOT
-  JUMPIFZ #f
+  JUMPIFZ #5
   LOAD    [0]
   LOAD    [0]
   MUL
@@ -39,30 +39,30 @@
   LOAD    [2]
   MUL
   EQL
-  JUMPIFZ #h
+  JUMPIFZ #7
   LOAD    [0]
   PUTINT
   LOAD    [1]
   PUTINT
   LOAD    [2]
   PUTINT
-#h:
+#7:
   LOAD    [0]
   LOADL   1
   ADD
   STORE   [0]
-  JUMP    #e
-#f:
+  JUMP    #4
+#5:
   LOAD    [1]
   LOADL   1
   ADD
   STORE   [1]
-  JUMP    #c
-#d:
+  JUMP    #2
+#3:
   LOAD    [2]
   LOADL   1
   ADD
   STORE   [2]
-  JUMP    #a
-#b:
+  JUMP    #0
+#1:
   HALT

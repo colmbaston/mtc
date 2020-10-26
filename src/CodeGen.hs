@@ -24,18 +24,13 @@ instance Monoid (DList a) where
   mempty = DList id
 
 type Environment = Map Identifier Address
-type CodeGen m   = MaybeT (WriterT (DList TAM) (StateT (Label, Environment) m))
+type CodeGen m   = MaybeT (WriterT (DList TAM) (StateT (Int, Environment) m))
 
 emit :: Monad m => [TAM] -> CodeGen m ()
 emit is = lift (tell (DList (is ++)))
 
-nextLabel :: Label -> Label
-nextLabel ""       = "a"
-nextLabel ('z':xs) = 'a'    : nextLabel xs
-nextLabel ( x :xs) = succ x :           xs
-
 freshLabel :: Monad m => CodeGen m Label
-freshLabel = lift (lift (state (\(l, m) -> (l, (nextLabel l, m)))))
+freshLabel = lift (lift (state (\(l, m) -> (show l, (l+1, m)))))
 
 setAddress :: Monad m => Identifier -> Address -> CodeGen m ()
 setAddress i a = do env <- snd <$> lift (lift get)
@@ -53,7 +48,7 @@ store :: Monad m => Identifier -> CodeGen m ()
 store i = getAddress i >>= \a -> emit [STORE a]
 
 codeGen :: Program -> Maybe [TAM]
-codeGen p = let (m, dl) = evalState (runWriterT (runMaybeT (codeGenProg p))) ("a", M.empty)
+codeGen p = let (m, dl) = evalState (runWriterT (runMaybeT (codeGenProg p))) (0, M.empty)
             in m $> runDList dl []
 
 codeGenProg :: Monad m => Program -> CodeGen m ()

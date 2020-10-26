@@ -6,22 +6,22 @@
   LOAD    [0]
   LOADL   0
   LSS
-  JUMPIFZ #a
+  JUMPIFZ #0
   LOADL   0
   STORE   [1]
-  JUMP    #b
-#a:
+  JUMP    #1
+#0:
   LOADL   1
   STORE   [1]
-#b:
+#1:
   LOADL   2
   STORE   [2]
-#c:
+#2:
   LOAD    [2]
   LOAD    [0]
   GTR
   NOT
-  JUMPIFZ #d
+  JUMPIFZ #3
   LOAD    [1]
   LOAD    [2]
   MUL
@@ -30,8 +30,8 @@
   LOADL   1
   ADD
   STORE   [2]
-  JUMP    #c
-#d:
+  JUMP    #2
+#3:
   LOAD    [1]
   PUTINT
   HALT
