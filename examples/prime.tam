@@ -1,0 +1,51 @@
+  LOADL   0
+  LOADL   2
+  LOADL   1
+  LOADL   0
+  GETINT
+  STORE   [0]
+  LOAD    [0]
+  LOADL   2
+  LSS
+  JUMPIFZ #c
+  LOADL   0
+  PUTINT
+  JUMP    #b
+#c:
+  LOAD    [2]
+  LOAD    [1]
+  LOAD    [1]
+  MUL
+  LOAD    [0]
+  GTR
+  NOT
+  AND
+  JUMPIFZ #d
+  LOAD    [0]
+  STORE   [3]
+#e:
+  LOAD    [3]
+  LOADL   0
+  GTR
+  JUMPIFZ #f
+  LOAD    [3]
+  LOAD    [1]
+  SUB
+  STORE   [3]
+  JUMP    #e
+#f:
+  LOAD    [3]
+  LOADL   0
+  EQL
+  NOT
+  STORE   [2]
+  LOAD    [1]
+  LOADL   1
+  ADD
+  STORE   [1]
+  JUMP    #c
+#d:
+  LOAD    [2]
+  PUTINT
+#b:
+  HALT

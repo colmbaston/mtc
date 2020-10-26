@@ -102,7 +102,7 @@ The compiler uses the instructions:
 
 Operators in the expression language that are not implemented directly by a TAM instruction can are realised by combining multiple instructions:
 * TAM code for `x ? y : z` is generated as if the expression were `!!x * y + !x * z`;
-* `x <= y` and`x >= y`are implemented as `!(x > y)` and `!(x < y)`, respectively.
+* `x != y`, `x <= y`, and`x >= y`are implemented as `!(x == y)`, `!(x > y)`, and `!(x < y)`, respectively.
 
 ## Usage
 
