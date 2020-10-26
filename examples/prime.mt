@@ -11,7 +11,9 @@ begin
       mod := n;
       while mod > 0 do mod := mod - i;
       continue := mod != 0;
-      i := i + 1
+      if i == 2
+        then i := 3
+        else i := i + 2
     end;
   printint(n < 2 ? 0 : continue)
 end

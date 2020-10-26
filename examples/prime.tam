@@ -33,7 +33,15 @@
   NOT
   STORE   [2]
   LOAD    [1]
-  LOADL   1
+  LOADL   2
+  EQL
+  JUMPIFZ #e
+  LOADL   3
+  STORE   [1]
+  JUMP    #a
+#e:
+  LOAD    [1]
+  LOADL   2
   ADD
   STORE   [1]
   JUMP    #a

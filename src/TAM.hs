@@ -79,26 +79,26 @@ code :: Parser [TAM]
 code = (:) <$> inst <*> (many (sat space (/= '\n')) *> newline *> many space *> code) <|> pure []
 
 inst :: Parser TAM
-inst = (string "LOADL"  $> LOADL) <*> (some (sat space (/= '\n')) *> integer)    <|>
-       (string "ADD"    $> ADD)                                                  <|>
-       (string "SUB"    $> SUB)                                                  <|>
-       (string "MUL"    $> MUL)                                                  <|>
-       (string "DIV"    $> DIV)                                                  <|>
-       (string "NEG"    $> NEG)                                                  <|>
-       (string "AND"    $> AND)                                                  <|>
-       (string "OR"     $> OR )                                                  <|>
-       (string "NOT"    $> NOT)                                                  <|>
-       (string "EQL"    $> EQL)                                                  <|>
-       (string "LSS"    $> LSS)                                                  <|>
-       (string "GTR"    $> GTR)                                                  <|>
-       (string "GETINT" $> GETINT)                                               <|>
-       (string "PUTINT" $> PUTINT)                                               <|>
-       (LABEL <$> label <* string ":")                                           <|>
-       (string "JUMP"    $> JUMP)    <*> (some (sat space (/= '\n')) *> label)   <|>
-       (string "JUMPIFZ" $> JUMPIFZ) <*> (some (sat space (/= '\n')) *> label)   <|>
-       (string "LOAD"    $> LOAD)    <*> (some (sat space (/= '\n')) *> address) <|>
-       (string "STORE"   $> STORE)   <*> (some (sat space (/= '\n')) *> address) <|>
-       (string "HALT"    $> HALT)
+inst =  (string "LOADL"   $> LOADL) <*> (some (sat space (/= '\n')) *> integer)
+    <|> (string "ADD"     $> ADD)
+    <|> (string "SUB"     $> SUB)
+    <|> (string "MUL"     $> MUL)
+    <|> (string "DIV"     $> DIV)
+    <|> (string "NEG"     $> NEG)
+    <|> (string "AND"     $> AND)
+    <|> (string "OR"      $> OR )
+    <|> (string "NOT"     $> NOT)
+    <|> (string "EQL"     $> EQL)
+    <|> (string "LSS"     $> LSS)
+    <|> (string "GTR"     $> GTR)
+    <|> (string "GETINT"  $> GETINT)
+    <|> (string "PUTINT"  $> PUTINT)
+    <|> (LABEL <$> label <*  string ":")
+    <|> (string "JUMP"    $> JUMP)    <*> (some (sat space (/= '\n')) *> label)
+    <|> (string "JUMPIFZ" $> JUMPIFZ) <*> (some (sat space (/= '\n')) *> label)
+    <|> (string "LOAD"    $> LOAD)    <*> (some (sat space (/= '\n')) *> address)
+    <|> (string "STORE"   $> STORE)   <*> (some (sat space (/= '\n')) *> address)
+    <|> (string "HALT"    $> HALT)
 
 address :: Parser Address
 address = string "[" *> trim natural <* string "]"
