@@ -1,4 +1,4 @@
-module TAM (Label, Address, TAM(..), formatTAM, exec, execWithStack, parseTAM, optimiseTAM) where
+module TAM (Label, Address, TAM(..), formatTAM, Stack, exec, execWithStack, parseTAM, optimiseTAM) where
 
 import           Data.Char
 import           Data.Maybe
@@ -108,7 +108,8 @@ label = string "#" *> some (sat item isAlphaNum)
 
 -- EXECUTING TAM CODE
 
-type Machine m = MaybeT (StateT (Address, Seq Int) m)
+type Stack     = Seq Int
+type Machine m = MaybeT (StateT (Address, Stack) m)
 
 increment :: Monad m => Machine m ()
 increment = lift (modify (first (+1)))
@@ -160,10 +161,10 @@ jumpTable n js (      i : is) = second (i:) (jumpTable (n+1)            js  is)
 instArray :: [TAM] -> (Int, Array Int TAM)
 instArray is = let l = length is in (l, listArray (0, l-1) is)
 
-exec :: [TAM] -> IO (Maybe (Seq Int))
+exec :: [TAM] -> IO (Maybe Stack)
 exec = execWithStack S.empty
 
-execWithStack :: Seq Int -> [TAM] -> IO (Maybe (Seq Int))
+execWithStack :: Stack -> [TAM] -> IO (Maybe Stack)
 execWithStack xs is = (\(m, (_, ys)) -> m $> ys) <$> runStateT (runMaybeT run) (0, xs)
   where
     jt  :: JumpTable
