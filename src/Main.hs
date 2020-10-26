@@ -84,7 +84,7 @@ compileMT :: Program -> IO [TAM]
 compileMT = maybe (putStrLn "error: failed to generate code for MT program (e.g. duplicate variable declaraions or use of an undeclared variable)" *> exitFailure) (pure . optimiseTAM) . codeGen
 
 readTAM :: FilePath -> IO [TAM]
-readTAM file = readFileChecked file >>= maybe (putStr "error: failed to parse " *> putStr file *> putStrLn " as a TAM program" *> exitFailure) pure . parseTAM
+readTAM file = readFileChecked file >>= maybe (putStr "error: failed to parse " *> putStr file *> putStrLn " as a TAM program" *> exitFailure) (pure . optimiseTAM) .  parseTAM
 
 writeTAM :: FilePath -> [TAM] -> IO ()
 writeTAM file code = writeFileChecked file (formatTAM code) *> putStr "TAM code written to " *> putStrLn file
