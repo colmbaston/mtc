@@ -105,7 +105,8 @@ Operators in the expression language that are not implemented directly by a TAM 
 * `x != y`, `x <= y`, and`x >= y`are implemented as `!(x == y)`, `!(x > y)`, and `!(x < y)`, respectively.
 
 The compiler also implements a simple TAM code optimiser.
-This iterates a function which performs one optimisation pass until the code is a fixed-point of this function:
+This iterates a function which performs one optimisation pass until the code is a fixed-point.
+A single optimisation pass consists of these phases:
 * A peephole optimisation phase inspects a small window of the TAM code at a time, culling redundant instructions and replacing inefficient instruction sequences with more efficient equivalents;
 * a label aliasing phase determines when one label is an alias of another (e.g. when two labels occur consecutively, or a label is immediately followed by an unconditional jump) and merges them.
 
