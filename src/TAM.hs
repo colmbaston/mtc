@@ -229,7 +229,7 @@ optimiseTAM = fixedPoint (fixedPoint mergeLabels . peephole)
         alias []                        = Nothing
         alias ((LABEL a, LABEL b) :  _) = Just (a, b)
         alias ((LABEL a, JUMP  b) :  _) = Just (a, b)
-        alias ( _                 : ls) = alias ls
+        alias                  (_ : ls) = alias ls
 
         relabel :: Label -> Label -> TAM -> Maybe TAM
         relabel a _ (LABEL    c) | c == a = Nothing

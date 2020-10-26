@@ -128,4 +128,4 @@ The modes available for MT files are:
 [^1]: The compiler's parser only constructs an AST from a program, so the displayed CST is not strictly the parse tree of the source file (e.g. redundant parentheses will not be displayed).
 
 The modes available for TAM files:
-* `--run`:       execute a TAM program to its final stack (default).
+* `--run`:       execute a TAM program (default).
