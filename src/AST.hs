@@ -15,6 +15,7 @@ where
 import Parser
 import Lexer
 
+import Data.Functor
 import Control.Applicative
 
 type Identifier  = String
@@ -95,7 +96,7 @@ commands = (:) <$> command <*> do t <- peekToken
 identifier :: Parser Token Identifier
 identifier = do t <- peekToken
                 case t of
-                  Just (TIdent i) -> nextToken *> pure i
+                  Just (TIdent i) -> nextToken $> i
                   _               -> empty
 
 -- EXPRESSION PARSER
@@ -161,8 +162,8 @@ mulExpr = go id
 atomExpr :: Parser Token Expr
 atomExpr = do t <- peekToken
               case t of
-                Just (TLiteral n)  -> nextToken *> pure (Literal  n)
-                Just (TIdent   i)  -> nextToken *> pure (Variable i)
+                Just (TLiteral n)  -> nextToken $> Literal  n
+                Just (TIdent   i)  -> nextToken $> Variable i
                 Just  TLeftPar     -> parens expr
                 Just  TSubtraction -> UnaryOp IntegerNegation <$> (nextToken *> atomExpr)
                 Just  TExclamation -> UnaryOp BooleanNegation <$> (nextToken *> atomExpr)

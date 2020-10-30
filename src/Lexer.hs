@@ -2,7 +2,6 @@ module Lexer (Token(..), tokenise) where
 
 import Parser
 import Data.Char
-import Data.Maybe
 import Data.Functor
 import Control.Applicative
 
@@ -115,4 +114,4 @@ oneToken = (,) <$> srcPos <*> (tokens "let"      *> peekNotAlphaNum $> TLet
                           <|>  TIdent   <$> ((:) <$> sat nextToken isAlpha <*> many (sat nextToken isAlphaNum)))
 
 peekNotAlphaNum :: Parser Char ()
-peekNotAlphaNum = sat peek (fromMaybe True . fmap (not . isAlphaNum . snd)) $> ()
+peekNotAlphaNum = sat peek (maybe True (not . isAlphaNum . snd)) $> ()
