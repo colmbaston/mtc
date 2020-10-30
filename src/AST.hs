@@ -13,28 +13,27 @@ module AST
 where
 
 import Parser
-import Data.Char
-import Data.Functor
+import Lexer
+
 import Control.Applicative
 
-import           Data.Set (Set)
-import qualified Data.Set as S
-
 type Identifier  = String
-data Program     = Program [Declaration] Command
-data Declaration = Initialise Identifier Expr
+data Program     = Program [Declaration] Command deriving Show
+data Declaration = Initialise Identifier Expr    deriving Show
 data Command     = Assign     Identifier Expr
                  | If Expr Command Command
                  | While Expr Command
                  | GetInt Identifier
                  | PrintInt Expr
                  | Block [Command]
+                 deriving Show
 
 data Expr = Literal   Int
           | Variable  Identifier
           | UnaryOp   UnaryOp   Expr
           | BinaryOp  BinaryOp  Expr Expr
           | TernaryOp TernaryOp Expr Expr Expr
+          deriving Show
 
 data UnaryOp = IntegerNegation
              | BooleanNegation
@@ -58,71 +57,113 @@ data TernaryOp = Conditional deriving (Eq, Show)
 
 -- PROGRAM PARSER
 
-parseProgram :: String -> Maybe Program
-parseProgram src = fst <$> parse (trim prog <* eof) src
+parseProgram :: String -> Either ParseError Program
+parseProgram src = tokenise src >>= fmap fst . parse (prog <* eof)
 
-prog :: Parser Program
-prog = Program <$> (string "let" *> some space *> decls)
-               <*> (some space *> string "in" *> some space *> command)
+parens :: Parser Token a -> Parser Token a
+parens px = token TLeftPar *> px <* token TRightPar
 
-decls :: Parser [Declaration]
-decls = (:) <$> decl <*> ((trim (string ";") *> decls) <|> pure [])
+prog :: Parser Token Program
+prog = Program <$> (token TLet *> decls) <*> (token TIn *> command)
 
-decl :: Parser Declaration
-decl = Initialise <$> (       string "var" *> some space *> identifier)
-                  <*> ((trim (string ":=") *> expr) <|> pure (Literal 0))
+decls :: Parser Token [Declaration]
+decls = (:) <$> decl <*> do t <- peekToken
+                            case t of
+                              Just TSemicolon -> nextToken *> decls
+                              _               -> pure []
 
-command :: Parser Command
-command = Assign   <$> identifier <*> (trim (string ":=") *> expr) <|>
-          If       <$> (string "if"       *> some space *> expr) <*> (some space *> string "then" *> some space *> command) <*> (some space *> string "else" *> some space *> command) <|>
-          While    <$> (string "while"    *> some space *> expr) <*> (some space *> string "do"   *> some space *> command) <|>
-          GetInt   <$> (string "getint"   *> many space *> parens (trim identifier)) <|>
-          PrintInt <$> (string "printint" *> many space *> parens (trim expr)) <|>
-          Block    <$> (string "begin"    *> some space *> commands <* some space <* string "end")
+decl :: Parser Token Declaration
+decl = Initialise <$> (token TVar *> identifier) <*> (do t <- peekToken
+                                                         case t of
+                                                           Just TAssign -> nextToken *> expr
+                                                           _            -> pure (Literal 0))
 
-commands :: Parser [Command]
-commands = (:) <$> command <*> ((trim (string ";") *> commands) <|> pure [])
+command :: Parser Token Command
+command =  Assign   <$> identifier <*> (token TAssign *> expr)
+       <|> If       <$> (token TIf       *> expr) <*> (token TThen *> command) <*> (token TElse *> command)
+       <|> While    <$> (token TWhile    *> expr) <*> (token TDo   *> command)
+       <|> GetInt   <$> (token TGetInt   *> parens identifier)
+       <|> PrintInt <$> (token TPrintInt *> parens expr)
+       <|> Block    <$> (token TBegin    *> commands <* token TEnd)
 
-keywords :: Set Identifier
-keywords = S.fromAscList ["begin", "do", "else", "end", "getint", "if", "in", "let", "printint", "then", "var", "while"]
+commands :: Parser Token [Command]
+commands = (:) <$> command <*> do t <- peekToken
+                                  case t of
+                                    Just TSemicolon -> nextToken *> commands
+                                    _               -> pure []
 
-identifier :: Parser Identifier
-identifier = sat ((:) <$> sat item isAlpha <*> many (sat item isAlphaNum)) (`S.notMember` keywords)
+identifier :: Parser Token Identifier
+identifier = do t <- peekToken
+                case t of
+                  Just (TIdent i) -> nextToken *> pure i
+                  _               -> empty
 
 -- EXPRESSION PARSER
 
-expr :: Parser Expr
+expr :: Parser Token Expr
 expr = condExpr
 
-condExpr :: Parser Expr
+condExpr :: Parser Token Expr
 condExpr = do x <- disjExpr
-              (TernaryOp Conditional x
-                 <$> (trim (string "?") *> disjExpr)
-                 <*> (trim (string ":") *> disjExpr)) <|> pure x
+              t <- peekToken
+              case t of
+                Just TQuestion -> TernaryOp Conditional x <$> (nextToken *> disjExpr) <*> (token TColon *> disjExpr)
+                _              -> pure x
 
-disjExpr :: Parser Expr
-disjExpr = chainl1 conjExpr (trim (string "||" $> BinaryOp Disjunction))
+disjExpr :: Parser Token Expr
+disjExpr = do x <- conjExpr
+              t <- peekToken
+              case t of
+                Just TDisjunction -> BinaryOp Disjunction x <$> (nextToken *> disjExpr)
+                _                 -> pure x
 
-conjExpr :: Parser Expr
-conjExpr = chainl1 relExpr (trim (string "&&" $> BinaryOp Conjunction))
+conjExpr :: Parser Token Expr
+conjExpr = do x <- relExpr
+              t <- peekToken
+              case t of
+                Just TConjunction -> BinaryOp Conjunction x <$> (nextToken *> conjExpr)
+                _                 -> pure x
 
-relExpr :: Parser Expr
+relExpr :: Parser Token Expr
 relExpr = do x <- addExpr
-             BinaryOp <$> trim (string "==" $> Equal <|> string "!=" $> NotEqual             <|>
-                                string "<" *> (string "=" $> LessEqual    <|> pure Less)     <|>
-                                string ">" *> (string "=" $> GreaterEqual <|> pure Greater)) <*> pure x <*> addExpr <|> pure x
+             t <- peekToken
+             case t of
+               Just TEqual        -> BinaryOp Equal        x <$> (nextToken *> addExpr)
+               Just TNotEqual     -> BinaryOp NotEqual     x <$> (nextToken *> addExpr)
+               Just TLess         -> BinaryOp Less         x <$> (nextToken *> addExpr)
+               Just TLessEqual    -> BinaryOp LessEqual    x <$> (nextToken *> addExpr)
+               Just TGreater      -> BinaryOp Greater      x <$> (nextToken *> addExpr)
+               Just TGreaterEqual -> BinaryOp GreaterEqual x <$> (nextToken *> addExpr)
+               _                  -> pure x
 
-addExpr :: Parser Expr
-addExpr = chainl1 mulExpr (trim (BinaryOp <$> (string "+" $> Addition <|>
-                                               string "-" $> Subtraction)))
+addExpr :: Parser Token Expr
+addExpr = go id
+  where
+    go :: (Expr -> Expr) -> Parser Token Expr
+    go f = do x <- f <$> mulExpr
+              t <- peekToken
+              case t of
+                Just TAddition    -> nextToken *> go (BinaryOp Addition    x)
+                Just TSubtraction -> nextToken *> go (BinaryOp Subtraction x)
+                _                 -> pure x
 
-mulExpr :: Parser Expr
-mulExpr  = chainl1 atomExpr (trim (BinaryOp <$> (string "*" $> Multiplication <|>
-                                                 string "/" $> Division)))
+mulExpr :: Parser Token Expr
+mulExpr = go id
+  where
+    go :: (Expr -> Expr) -> Parser Token Expr
+    go f = do x <- f <$> atomExpr
+              t <- peekToken
+              case t of
+                Just TMultiplication -> nextToken *> go (BinaryOp Multiplication x)
+                Just TDivision       -> nextToken *> go (BinaryOp Division       x)
+                _                    -> pure x
 
-atomExpr :: Parser Expr
-atomExpr  = Literal  <$> natural
-         <|>  Variable <$> identifier
-         <|>  parens (trim expr)
-         <|>  UnaryOp <$> trimR (string "-" $> IntegerNegation  <|>
-                                 string "!" $> BooleanNegation) <*> atomExpr
+atomExpr :: Parser Token Expr
+atomExpr = do t <- peekToken
+              case t of
+                Just (TLiteral n)  -> nextToken *> pure (Literal  n)
+                Just (TIdent   i)  -> nextToken *> pure (Variable i)
+                Just  TLeftPar     -> parens expr
+                Just  TSubtraction -> UnaryOp IntegerNegation <$> (nextToken *> atomExpr)
+                Just  TExclamation -> UnaryOp BooleanNegation <$> (nextToken *> atomExpr)
+                _                  -> empty

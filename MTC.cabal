@@ -11,7 +11,7 @@ executable mtc
   ghc-options:         -Wall
   hs-source-dirs:      src
   main-is:             Main.hs
-  other-modules:       Parser, AST, Display, CodeGen, TAM
+  other-modules:       Parser, Lexer, AST, Display, CodeGen, TAM
   build-depends:       base         ^>= 4.14,
                        containers   ^>= 0.6,
                        array        ^>= 0.5,
