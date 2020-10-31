@@ -18,7 +18,7 @@ annotate :: String -> [(SrcPos, Char)]
 annotate = go (SrcPos 1 1)
   where
     go :: SrcPos -> String -> [(SrcPos, Char)]
-    go _  []        = []
+    go sp  []       = [(sp, '\ETX')]
     go sp ('\n':xs) = (sp, '\n') : go (SrcPos (line sp + 1)          1 ) xs
     go sp (   x:xs) = (sp,    x) : go (SrcPos (line sp) (column sp + 1)) xs
 
@@ -32,12 +32,12 @@ instance Show ParseError where
 
 instance Semigroup ParseError where
   x@(ParseError spx dx) <> y@(ParseError spy dy) = case (spx, spy) of
-                                                     (Nothing, _) -> y
-                                                     (_, Nothing) -> x
-                                                     _            -> case compare spx spy of
-                                                                       LT -> y
-                                                                       EQ -> ParseError spx (dx <|> dy)
-                                                                       GT -> x
+                                                     (Nothing, _)     -> y
+                                                     (_, Nothing)     -> x
+                                                     (Just a, Just b) -> case compare a b of
+                                                                           LT -> y
+                                                                           EQ -> ParseError spx (dy <|> dx)
+                                                                           GT -> x
 
 -- THE PARSER TYPE
 
@@ -67,13 +67,7 @@ instance Alternative (Parser t) where
 px <?> msg = Parser (do src <- get
                         case parse px src of
                           Left (ParseError spx _) -> lift (Left (ParseError spx (Just msg)))
-                          Right (x, sx)          -> put sx *> lift (Right x))
-
-(<?++>) :: Parser t a -> String -> Parser t a
-px <?++> msg = Parser (do src <- get
-                          case parse px src of
-                            Left (ParseError spx dx) -> lift (Left (ParseError spx (dx <> Just msg)))
-                            Right (x, sx)            -> put sx *> lift (Right x))
+                          Right (x, sx)           -> put sx *> lift (Right x))
 
 -- PARSER PRIMITIVES
 
@@ -98,8 +92,8 @@ peekToken = fmap snd <$> peek
 srcPos :: Parser t SrcPos
 srcPos = peek >>= maybe empty (pure . fst)
 
-eof :: Parser t ()
-eof = do src <- Parser get
+etx :: Parser t ()
+etx = do src <- Parser get
          case src of
            [] -> pure ()
            _  -> empty

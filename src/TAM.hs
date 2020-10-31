@@ -73,7 +73,7 @@ formatInst  HALT        = "  HALT"
 -- PARSING TAM CODE
 
 parseTAM :: String -> Either ParseError [TAM]
-parseTAM = fmap fst . parse (trim code <* eof <?> "unrecognised TAM instruction") . annotate
+parseTAM = fmap fst . parse ((trim code <* token '\ETX' <* etx) <?> "unrecognised TAM instruction") . annotate
 
 code :: Parser Char [TAM]
 code = (:) <$> inst <*> (many (sat space (/= '\n')) *> sat nextToken (== '\n') *> many space *> code) <|> pure []
@@ -149,7 +149,7 @@ getInt = do putStr "GETINT> "
             xs <- getLine
             either (const (putStrLn "could not parse input as integer" *> getInt))
                    (pure . fst)
-                   (parse (trim integer <* eof) (annotate xs))
+                   (parse (trim integer <* token '\ETX' <* etx) (annotate xs))
 
 type JumpTable = Map Label Int
 
@@ -221,7 +221,7 @@ optimiseTAM = fixedPoint (fixedPoint mergeLabels . peephole)
     peephole                   (x : xs)             = x : peephole            xs
 
     mergeLabels :: [TAM] -> [TAM]
-    mergeLabels is = foldr (\(a, b) -> mapMaybe (relabel a b)) is (alias (zip is (tail is)))
+    mergeLabels is = foldr (mapMaybe . uncurry relabel) is (alias (zip is (tail is)))
       where
         alias :: [(TAM, TAM)] -> Maybe (Label, Label)
         alias []                        = Nothing

@@ -27,16 +27,13 @@ data Command     = Assign     Identifier Expr
                  | GetInt Identifier
                  | PrintInt Expr
                  | Block [Command]
-
 data Expr        = Literal   Int
                  | Variable  Identifier
                  | UnaryOp   UnaryOp   Expr
                  | BinaryOp  BinaryOp  Expr Expr
                  | TernaryOp TernaryOp Expr Expr Expr
-
 data UnaryOp     = IntegerNegation
                  | BooleanNegation
-
 data BinaryOp    = Addition
                  | Subtraction
                  | Multiplication
@@ -49,19 +46,20 @@ data BinaryOp    = Addition
                  | Greater
                  | LessEqual
                  | GreaterEqual
-
 data TernaryOp   = Conditional
 
 -- PROGRAM PARSER
 
 parseProgram :: String -> Either ParseError Program
-parseProgram src = tokenise src >>= fmap fst . parse (prog <* eof)
+parseProgram src = tokenise src >>= fmap fst . parse (prog <* token ETX <* etx <?> "successfully parsed a program, but there are unconsumed tokens")
 
 parens :: Parser Token a -> Parser Token a
-parens px = token TLeftPar *> px <* token TRightPar
+parens px = do sp <- srcPos
+               token TLeftPar <?> "expected token \"(\"" *> px <*  token TRightPar <?> ("expected token \")\" to close the \"(\" at " ++ show sp)
 
 prog :: Parser Token Program
-prog = Program <$> (token TLet *> decls) <*> (token TIn *> command)
+prog = Program <$> (token TLet <?> "expected token \"let\"" *> decls)
+               <*> (token TIn  <?> "expected token \"in\" or a \";\" followed by another declaration" *> command)
 
 decls :: Parser Token [Declaration]
 decls = (:) <$> decl <*> do t <- peekToken
@@ -70,18 +68,24 @@ decls = (:) <$> decl <*> do t <- peekToken
                               _               -> pure []
 
 decl :: Parser Token Declaration
-decl = Initialise <$> (token TVar *> identifier) <*> (do t <- peekToken
-                                                         case t of
-                                                           Just TAssign -> nextToken *> expr
-                                                           _            -> pure (Literal 0))
+decl = Initialise <$> (token TVar <?> "expected token \"var\"" *> identifier)
+                  <*> (do t <- peekToken
+                          case t of
+                            Just TAssign -> nextToken *> expr
+                            _            -> pure (Literal 0))
 
 command :: Parser Token Command
-command =  Assign   <$> identifier <*> (token TAssign *> expr)
-       <|> If       <$> (token TIf       *> expr) <*> (token TThen *> command) <*> (token TElse *> command)
-       <|> While    <$> (token TWhile    *> expr) <*> (token TDo   *> command)
+command =  Assign   <$> identifier
+                    <*> (token TAssign  <?> "expected token \":=\""   *> expr)
+       <|> If       <$> (token TIf       *> expr)
+                    <*> (token TThen    <?> "expected token \"then\" or an operator (of appropriate precedence) followed by a subexpression" *> command)
+                    <*> (token TElse    <?> "expected token \"else\"" *> command)
+       <|> While    <$> (token TWhile    *> expr)
+                    <*> (token TDo      <?> "expected token \"do\" or an operator (of appropriate precedence) followed by a subexpression"   *> command)
        <|> GetInt   <$> (token TGetInt   *> parens identifier)
        <|> PrintInt <$> (token TPrintInt *> parens expr)
-       <|> Block    <$> (token TBegin    *> commands <* token TEnd)
+       <|> Block    <$> (token TBegin    *> commands <* token TEnd <?> "expected token \"end\" or a \";\" followed by another command")
+       <|> empty    <?> "expected a command"
 
 commands :: Parser Token [Command]
 commands = (:) <$> command <*> do t <- peekToken
@@ -93,7 +97,7 @@ identifier :: Parser Token Identifier
 identifier = do t <- peekToken
                 case t of
                   Just (TIdent i) -> nextToken $> i
-                  _               -> empty
+                  _               -> empty <?> "expected an identifier"
 
 -- EXPRESSION PARSER
 
@@ -104,7 +108,7 @@ condExpr :: Parser Token Expr
 condExpr = do x <- disjExpr
               t <- peekToken
               case t of
-                Just TQuestion -> TernaryOp Conditional x <$> (nextToken *> disjExpr) <*> (token TColon *> disjExpr)
+                Just TQuestion -> TernaryOp Conditional x <$> (nextToken *> disjExpr) <*> (token TColon <?> "expected token \":\"" *> disjExpr)
                 _              -> pure x
 
 disjExpr :: Parser Token Expr
@@ -163,4 +167,4 @@ atomExpr = do t <- peekToken
                 Just  TLeftPar     -> parens expr
                 Just  TSubtraction -> UnaryOp IntegerNegation <$> (nextToken *> atomExpr)
                 Just  TExclamation -> UnaryOp BooleanNegation <$> (nextToken *> atomExpr)
-                _                  -> empty
+                _                  -> empty <?> "expected an expression"
