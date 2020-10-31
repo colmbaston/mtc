@@ -72,39 +72,39 @@ formatInst  HALT        = "  HALT"
 
 -- PARSING TAM CODE
 
-parseTAM :: String -> Maybe [TAM]
-parseTAM src = fst <$> parse (trim code <* eof) src
+parseTAM :: String -> Either ParseError [TAM]
+parseTAM = fmap fst . parse ((trim code <* token '\ETX' <* etx) <?> "unrecognised TAM instruction") . annotate
 
-code :: Parser [TAM]
-code = (:) <$> inst <*> (many (sat space (/= '\n')) *> newline *> many space *> code) <|> pure []
+code :: Parser Char [TAM]
+code = (:) <$> inst <*> (many (sat space (/= '\n')) *> sat nextToken (== '\n') *> many space *> code) <|> pure []
 
-inst :: Parser TAM
-inst =  (string "LOADL"   $> LOADL) <*> (some (sat space (/= '\n')) *> integer)
-    <|> (string "ADD"     $> ADD)
-    <|> (string "SUB"     $> SUB)
-    <|> (string "MUL"     $> MUL)
-    <|> (string "DIV"     $> DIV)
-    <|> (string "NEG"     $> NEG)
-    <|> (string "AND"     $> AND)
-    <|> (string "OR"      $> OR )
-    <|> (string "NOT"     $> NOT)
-    <|> (string "EQL"     $> EQL)
-    <|> (string "LSS"     $> LSS)
-    <|> (string "GTR"     $> GTR)
-    <|> (string "GETINT"  $> GETINT)
-    <|> (string "PUTINT"  $> PUTINT)
-    <|> (LABEL <$> label <*  string ":")
-    <|> (string "JUMP"    $> JUMP)    <*> (some (sat space (/= '\n')) *> label)
-    <|> (string "JUMPIFZ" $> JUMPIFZ) <*> (some (sat space (/= '\n')) *> label)
-    <|> (string "LOAD"    $> LOAD)    <*> (some (sat space (/= '\n')) *> address)
-    <|> (string "STORE"   $> STORE)   <*> (some (sat space (/= '\n')) *> address)
-    <|> (string "HALT"    $> HALT)
+inst :: Parser Char TAM
+inst =  (tokens "LOADL"   $> LOADL) <*> (some (sat space (/= '\n')) *> integer)
+    <|> (tokens "ADD"     $> ADD)
+    <|> (tokens "SUB"     $> SUB)
+    <|> (tokens "MUL"     $> MUL)
+    <|> (tokens "DIV"     $> DIV)
+    <|> (tokens "NEG"     $> NEG)
+    <|> (tokens "AND"     $> AND)
+    <|> (tokens "OR"      $> OR )
+    <|> (tokens "NOT"     $> NOT)
+    <|> (tokens "EQL"     $> EQL)
+    <|> (tokens "LSS"     $> LSS)
+    <|> (tokens "GTR"     $> GTR)
+    <|> (tokens "GETINT"  $> GETINT)
+    <|> (tokens "PUTINT"  $> PUTINT)
+    <|> (LABEL <$> label <*  token ':')
+    <|> (tokens "JUMP"    $> JUMP)    <*> (some (sat space (/= '\n')) *> label)
+    <|> (tokens "JUMPIFZ" $> JUMPIFZ) <*> (some (sat space (/= '\n')) *> label)
+    <|> (tokens "LOAD"    $> LOAD)    <*> (some (sat space (/= '\n')) *> address)
+    <|> (tokens "STORE"   $> STORE)   <*> (some (sat space (/= '\n')) *> address)
+    <|> (tokens "HALT"    $> HALT)
 
-address :: Parser Address
-address = string "[" *> trim natural <* string "]"
+address :: Parser Char Address
+address = token '[' *> trim natural <* token ']'
 
-label :: Parser Label
-label = string "#" *> some (sat item isAlphaNum)
+label :: Parser Char Label
+label = token '#' *> some (sat nextToken isAlphaNum)
 
 -- EXECUTING TAM CODE
 
@@ -147,9 +147,9 @@ getInt :: IO Int
 getInt = do putStr "GETINT> "
             hFlush stdout
             xs <- getLine
-            maybe (putStrLn "could not parse input as integer" *> getInt)
-                  (pure . fst)
-                  (parse (trim integer <* eof) xs)
+            either (const (putStrLn "could not parse input as integer" *> getInt))
+                   (pure . fst)
+                   (parse (trim integer <* token '\ETX' <* etx) (annotate xs))
 
 type JumpTable = Map Label Int
 
@@ -217,13 +217,11 @@ optimiseTAM = fixedPoint (fixedPoint mergeLabels . peephole)
     peephole (LOADL a : JUMPIFZ b : xs) | a == 0    =     peephole (JUMP  b : xs)
                                         | otherwise =     peephole            xs
     peephole       (x : NEG : NEG : xs)             =     peephole       (x : xs)
-    peephole       (x : NOT : NOT : xs) | booleanOp =     peephole       (x : xs)
-                                        where
-                                          booleanOp = x `elem` [AND, OR, NOT, EQL, LSS, GTR]
+    peephole       (x : NOT : NOT : xs) | boolOp x  =     peephole       (x : xs)
     peephole                   (x : xs)             = x : peephole            xs
 
     mergeLabels :: [TAM] -> [TAM]
-    mergeLabels is = foldr (\(a, b) -> mapMaybe (relabel a b)) is (alias (zip is (tail is)))
+    mergeLabels is = foldr (mapMaybe . uncurry relabel) is (alias (zip is (tail is)))
       where
         alias :: [(TAM, TAM)] -> Maybe (Label, Label)
         alias []                        = Nothing
@@ -236,3 +234,12 @@ optimiseTAM = fixedPoint (fixedPoint mergeLabels . peephole)
         relabel a b (JUMP     c) | c == a = Just (JUMP    b)
         relabel a b (JUMPIFZ  c) | c == a = Just (JUMPIFZ b)
         relabel _ _  i                    = Just  i
+
+    boolOp :: TAM -> Bool
+    boolOp AND = True
+    boolOp OR  = True
+    boolOp NOT = True
+    boolOp EQL = True
+    boolOp LSS = True
+    boolOp GTR = True
+    boolOp _   = False

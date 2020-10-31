@@ -78,13 +78,19 @@ writeFileError file _ = putStr "error: failed to write " *> putStr file *> putSt
 -- MODE HANDLING
 
 readMT :: FilePath -> IO Program
-readMT file = readFileChecked file >>= maybe (putStr "error: failed to parse " *> putStr file *> putStrLn " as an MT program" *> exitFailure) pure . parseProgram
+readMT file = do src <- readFileChecked file
+                 case parseProgram src of
+                   Left  e -> print e *> exitFailure
+                   Right p -> pure p
 
 compileMT :: Program -> IO [TAM]
 compileMT = maybe (putStrLn "error: failed to generate code for MT program (e.g. duplicate variable declaraions or use of an undeclared variable)" *> exitFailure) (pure . optimiseTAM) . codeGen
 
 readTAM :: FilePath -> IO [TAM]
-readTAM file = readFileChecked file >>= maybe (putStr "error: failed to parse " *> putStr file *> putStrLn " as a TAM program" *> exitFailure) (pure . optimiseTAM) .  parseTAM
+readTAM file = do src <- readFileChecked file
+                  case parseTAM src of
+                    Left e  -> print e *> exitFailure
+                    Right p -> pure p
 
 writeTAM :: FilePath -> [TAM] -> IO ()
 writeTAM file code = writeFileChecked file (formatTAM code) *> putStr "TAM code written to " *> putStrLn file
