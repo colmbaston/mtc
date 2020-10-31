@@ -19,42 +19,38 @@ import Data.Functor
 import Control.Applicative
 
 type Identifier  = String
-data Program     = Program [Declaration] Command deriving Show
-data Declaration = Initialise Identifier Expr    deriving Show
+data Program     = Program [Declaration] Command
+data Declaration = Initialise Identifier Expr
 data Command     = Assign     Identifier Expr
                  | If Expr Command Command
                  | While Expr Command
                  | GetInt Identifier
                  | PrintInt Expr
                  | Block [Command]
-                 deriving Show
 
-data Expr = Literal   Int
-          | Variable  Identifier
-          | UnaryOp   UnaryOp   Expr
-          | BinaryOp  BinaryOp  Expr Expr
-          | TernaryOp TernaryOp Expr Expr Expr
-          deriving Show
+data Expr        = Literal   Int
+                 | Variable  Identifier
+                 | UnaryOp   UnaryOp   Expr
+                 | BinaryOp  BinaryOp  Expr Expr
+                 | TernaryOp TernaryOp Expr Expr Expr
 
-data UnaryOp = IntegerNegation
-             | BooleanNegation
-             deriving (Eq, Show)
+data UnaryOp     = IntegerNegation
+                 | BooleanNegation
 
-data BinaryOp = Addition
-              | Subtraction
-              | Multiplication
-              | Division
-              | Conjunction
-              | Disjunction
-              | Equal
-              | NotEqual
-              | Less
-              | Greater
-              | LessEqual
-              | GreaterEqual
-              deriving (Eq, Show)
+data BinaryOp    = Addition
+                 | Subtraction
+                 | Multiplication
+                 | Division
+                 | Conjunction
+                 | Disjunction
+                 | Equal
+                 | NotEqual
+                 | Less
+                 | Greater
+                 | LessEqual
+                 | GreaterEqual
 
-data TernaryOp = Conditional deriving (Eq, Show)
+data TernaryOp   = Conditional
 
 -- PROGRAM PARSER
 

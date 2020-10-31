@@ -7,7 +7,7 @@ import Control.Applicative
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 
--- SOURCE POSITIONS FOR ERROR MESSAGES
+-- SOURCE POSITIONS FOR USE IN ERROR MESSAGES
 
 data SrcPos = SrcPos { line :: Int, column :: Int } deriving (Eq, Ord)
 
@@ -22,7 +22,7 @@ annotate = go (SrcPos 1 1)
     go sp ('\n':xs) = (sp, '\n') : go (SrcPos (line sp + 1)          1 ) xs
     go sp (   x:xs) = (sp,    x) : go (SrcPos (line sp) (column sp + 1)) xs
 
--- PARSE ERROR MESSAGES
+-- ERROR MESSAGES
 
 data ParseError = ParseError (Maybe SrcPos) (Maybe String)
 
@@ -35,9 +35,9 @@ instance Semigroup ParseError where
                                                      (Nothing, _) -> y
                                                      (_, Nothing) -> x
                                                      _            -> case compare spx spy of
-                                                                     LT -> y
-                                                                     EQ -> ParseError spx (dx <|> dy)
-                                                                     GT -> x
+                                                                       LT -> y
+                                                                       EQ -> ParseError spx (dx <|> dy)
+                                                                       GT -> x
 
 -- THE PARSER TYPE
 

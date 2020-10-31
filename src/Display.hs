@@ -47,7 +47,34 @@ showBinOp GreaterEqual   = ">="
 showTernOp :: TernaryOp -> String
 showTernOp Conditional = "?:"
 
--- PRINT AST AS A TREE
+disjunctive :: BinaryOp -> Bool
+disjunctive Disjunction = True
+disjunctive _           = False
+
+conjunctive :: BinaryOp -> Bool
+conjunctive Conjunction = True
+conjunctive _           = False
+
+relational :: BinaryOp -> Bool
+relational Equal        = True
+relational NotEqual     = True
+relational Less         = True
+relational LessEqual    = True
+relational Greater      = True
+relational GreaterEqual = True
+relational _            = False
+
+additive :: BinaryOp -> Bool
+additive Addition    = True
+additive Subtraction = True
+additive _           = False
+
+multiplicative :: BinaryOp -> Bool
+multiplicative Multiplication = True
+multiplicative Division       = True
+multiplicative _              = False
+
+-- DISPLAY AST AS A TREE
 
 astDisplay :: Program -> String
 astDisplay p = astDisplayProg id p ""
@@ -101,7 +128,7 @@ astDisplayList _ f p xs  = go xs
     go [y]    = lastLine p . f (lastIndent p) y
     go (y:ys) = nextLine p . f (nextIndent p) y . go ys
 
--- PRINT CST AS A TREE
+-- DISPLAY CST AS A TREE
 
 cstDisplay :: Program -> String
 cstDisplay p = cstDisplayProg id p ""
@@ -187,7 +214,7 @@ cstDisplayExprCond p e = node "EXPR_COND"
 cstDisplayExprDisj :: ShowS -> Expr -> ShowS
 cstDisplayExprDisj p e = node "EXPR_DISJ"
                        . case e of
-                           BinaryOp op x y | op == Disjunction
+                           BinaryOp op x y | disjunctive op
                                           -> nextLine p . cstDisplayExprDisj (nextIndent p) x
                                            . nextLine p . leaf (showBinOp op)
                                            . lastLine p . cstDisplayExprConj (lastIndent p) y
@@ -196,7 +223,7 @@ cstDisplayExprDisj p e = node "EXPR_DISJ"
 cstDisplayExprConj :: ShowS -> Expr -> ShowS
 cstDisplayExprConj p e = node "EXPR_CONJ"
                        . case e of
-                           BinaryOp op x y | op == Conjunction
+                           BinaryOp op x y | conjunctive op
                                           -> nextLine p . cstDisplayExprConj (nextIndent p) x
                                            . nextLine p . leaf (showBinOp op)
                                            . lastLine p . cstDisplayExprRel  (lastIndent p) y
@@ -205,16 +232,16 @@ cstDisplayExprConj p e = node "EXPR_CONJ"
 cstDisplayExprRel :: ShowS -> Expr -> ShowS
 cstDisplayExprRel p e = node "EXPR_REL"
                       . case e of
-                          BinaryOp op x y | op `elem` [Equal, NotEqual, Less, LessEqual, Greater, GreaterEqual]
-                                        -> nextLine p . cstDisplayExprAdd (nextIndent p) x
-                                         . nextLine p . leaf (showBinOp op)
-                                         . lastLine p . cstDisplayExprAdd  (lastIndent p) y
-                          _             -> sameLine   . cstDisplayExprAdd  (sameIndent 12 p) e
+                          BinaryOp op x y | relational op
+                                         -> nextLine p . cstDisplayExprAdd (nextIndent p) x
+                                          . nextLine p . leaf (showBinOp op)
+                                          . lastLine p . cstDisplayExprAdd  (lastIndent p) y
+                          _              -> sameLine   . cstDisplayExprAdd  (sameIndent 12 p) e
 
 cstDisplayExprAdd :: ShowS -> Expr -> ShowS
 cstDisplayExprAdd p e = node "EXPR_ADD"
                       . case e of
-                          BinaryOp op x y | op `elem` [Addition, Subtraction]
+                          BinaryOp op x y | additive op
                                          -> nextLine p . cstDisplayExprAdd (nextIndent p) x
                                           . nextLine p . leaf (showBinOp op)
                                           . lastLine p . cstDisplayExprMul (lastIndent p) y
@@ -223,7 +250,7 @@ cstDisplayExprAdd p e = node "EXPR_ADD"
 cstDisplayExprMul :: ShowS -> Expr -> ShowS
 cstDisplayExprMul p e = node "EXPR_MUL"
                       . case e of
-                          BinaryOp op x y | op `elem` [Multiplication, Division]
+                          BinaryOp op x y | multiplicative op
                                          -> nextLine p . cstDisplayExprMul (nextIndent p) x
                                           . nextLine p . leaf (showBinOp op)
                                           . lastLine p . cstDisplayExprAtom (lastIndent p) y

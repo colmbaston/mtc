@@ -8,7 +8,6 @@ import Control.Applicative
 data Token = TLet
            | TIn
            | TVar
-           | TAssign
            | TIf
            | TThen
            | TElse
@@ -18,6 +17,7 @@ data Token = TLet
            | TPrintInt
            | TBegin
            | TEnd
+           | TAssign
            | TSemicolon
            | TQuestion
            | TColon
@@ -44,7 +44,6 @@ instance Show Token where
   show  TLet               = "let"
   show  TIn                = "in"
   show  TVar               = "var"
-  show  TAssign            = ":="
   show  TIf                = "if"
   show  TThen              = "then"
   show  TElse              = "else"
@@ -54,6 +53,7 @@ instance Show Token where
   show  TPrintInt          = "printint"
   show  TBegin             = "begin"
   show  TEnd               = "end"
+  show  TAssign            = ":="
   show  TSemicolon         = ";"
   show  TQuestion          = "?"
   show  TColon             = ":"
@@ -82,7 +82,6 @@ oneToken :: Parser Char (SrcPos, Token)
 oneToken = (,) <$> srcPos <*> (tokens "let"      *> peekNotAlphaNum $> TLet
                           <|>  tokens "in"       *> peekNotAlphaNum $> TIn
                           <|>  tokens "var"      *> peekNotAlphaNum $> TVar
-                          <|>  tokens ":="                          $> TAssign
                           <|>  tokens "if"       *> peekNotAlphaNum $> TIf
                           <|>  tokens "then"     *> peekNotAlphaNum $> TThen
                           <|>  tokens "else"     *> peekNotAlphaNum $> TElse
@@ -92,6 +91,7 @@ oneToken = (,) <$> srcPos <*> (tokens "let"      *> peekNotAlphaNum $> TLet
                           <|>  tokens "printint" *> peekNotAlphaNum $> TPrintInt
                           <|>  tokens "begin"    *> peekNotAlphaNum $> TBegin
                           <|>  tokens "end"      *> peekNotAlphaNum $> TEnd
+                          <|>  tokens ":="                          $> TAssign
                           <|>  tokens ";"                           $> TSemicolon
                           <|>  tokens "?"                           $> TQuestion
                           <|>  tokens ":"                           $> TColon
@@ -114,4 +114,4 @@ oneToken = (,) <$> srcPos <*> (tokens "let"      *> peekNotAlphaNum $> TLet
                           <|>  TIdent   <$> ((:) <$> sat nextToken isAlpha <*> many (sat nextToken isAlphaNum)))
 
 peekNotAlphaNum :: Parser Char ()
-peekNotAlphaNum = sat peek (maybe True (not . isAlphaNum . snd)) $> ()
+peekNotAlphaNum = sat peekToken (maybe True (not . isAlphaNum)) $> ()
