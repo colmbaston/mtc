@@ -14,7 +14,7 @@ import Control.Applicative
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
-import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Except
 
 import Parser
 import System.IO
@@ -108,48 +108,64 @@ label = token '#' *> some (sat nextToken isAlphaNum)
 
 -- EXECUTING TAM CODE
 
+data ExecError    = ExecError Int ErrorDetails
+data ErrorDetails = InvalidAddress Address
+                  | InvalidLabel   Label
+                  | BufferOverrun
+                  | StackUnderflow
+                  | DivZero
+
+instance Show ExecError where
+  showsPrec _ (ExecError pc e) = showString "execution error at instruction " . shows pc . showString ": "
+                               . case e of
+                                   InvalidAddress a -> showString "invalid address [" . shows a . showChar ']'
+                                   InvalidLabel   l -> showString "invalid label #" . showString l
+                                   BufferOverrun    -> showString "overran the instruction buffer"
+                                   StackUnderflow   -> showString "stack underflow"
+                                   DivZero          -> showString "division by zero"
+
 type Stack     = Seq Int
-type Machine m = MaybeT (StateT (Address, Stack) m)
+type Machine m = StateT (Address, Stack) (ExceptT ExecError m)
+
+emitError :: Monad m => ErrorDetails -> Machine m a
+emitError e = do pc <- fst <$> get
+                 lift (throwE (ExecError pc e))
 
 increment :: Monad m => Machine m ()
-increment = lift (modify (first (+1)))
+increment = modify (first (+1))
 
 push :: Monad m => Int -> Machine m ()
-push x = lift (modify (second (|> x)))
+push x = modify (second (|> x))
 
 pop :: Monad m => Machine m Int
-pop = do xs <- snd <$> lift get
+pop = do xs <- snd <$> get
          case xs of
-           Empty    -> empty
-           ys :|> y -> lift (modify (second (const ys))) $> y
+           Empty    -> emitError StackUnderflow
+           ys :|> y -> modify (second (const ys)) $> y
 
 unOp :: Monad m => (Int -> Int) -> Machine m ()
-unOp op = do x <- pop
-             push (op x)
-             increment
+unOp op = pop >>= push . op >> increment
 
 binOp :: Monad m => (Int -> Int -> Int) -> Machine m ()
-binOp op = do x <- pop
-              y <- pop
-              push (op y x)
-              increment
+binOp op = flip op <$> pop <*> pop >>= push >> increment
 
 load :: Monad m => Address -> Machine m ()
-load a = lift get >>= maybe empty push . S.lookup a . snd >> increment
+load a = do xs <- snd <$> get
+            case S.lookup a xs of
+              Nothing -> emitError (InvalidAddress a)
+              Just  x -> push x >> increment
 
 store :: Monad m => Address -> Machine m ()
-store a = do xs <- snd <$> lift get
+store a = do xs <- snd <$> get
              if 0 <= a && a < S.length xs
-               then pop >>= lift . modify . second . S.update a >> increment
-               else empty
+               then pop >>= modify . second . S.update a >> increment
+               else emitError (InvalidAddress a)
 
-getInt :: IO Int
-getInt = do putStr "GETINT> "
-            hFlush stdout
-            xs <- getLine
-            either (const (putStrLn "could not parse input as integer" *> getInt))
-                   (pure . fst)
-                   (parse (trim integer <* token '\ETX' <* etx) (annotate xs))
+getInt :: MonadIO m => Machine m Int
+getInt = do xs <- liftIO (putStr "GETINT> " *> hFlush stdout *> getLine)
+            case fst <$> parse (trim integer <* token '\ETX' <* etx) (annotate xs) of
+              Left  _ -> liftIO (putStrLn "could not parse as integer") *> getInt
+              Right n -> pure n
 
 type JumpTable = Map Label Int
 
@@ -161,11 +177,11 @@ jumpTable n js (      i : is) = second (i:) (jumpTable (n+1)            js  is)
 instArray :: [TAM] -> (Int, Array Int TAM)
 instArray is = let l = length is in (l, listArray (0, l-1) is)
 
-exec :: [TAM] -> IO (Maybe Stack)
+exec :: [TAM] -> IO (Either ExecError Stack)
 exec = execWithStack S.empty
 
-execWithStack :: Stack -> [TAM] -> IO (Maybe Stack)
-execWithStack xs is = (\(m, (_, ys)) -> m $> ys) <$> runStateT (runMaybeT run) (0, xs)
+execWithStack :: Stack -> [TAM] -> IO (Either ExecError Stack)
+execWithStack xs is = fmap snd <$> runExceptT (execStateT run (0, xs))
   where
     jt  :: JumpTable
     ia  :: Array Int TAM
@@ -173,19 +189,19 @@ execWithStack xs is = (\(m, (_, ys)) -> m $> ys) <$> runStateT (runMaybeT run) (
     (jt, (len, ia)) = second instArray (jumpTable 0 M.empty is)
 
     run :: MonadIO m => Machine m ()
-    run = do pc <- fst <$> lift get
+    run = do pc <- fst <$> get
              if 0 <= pc && pc < len
                then case ia ! pc of
                       HALT -> liftIO (putStrLn "HALTED")
                       i    -> step i *> run
-               else empty
+               else emitError BufferOverrun
 
     step :: MonadIO m => TAM -> Machine m ()
     step (LOADL n)   = push n *> increment
     step  ADD        = binOp (+)
     step  SUB        = binOp (-)
     step  MUL        = binOp (*)
-    step  DIV        = pop >>= \x -> pop >>= \y -> if x == 0 then empty else push (y `div` x) >> increment
+    step  DIV        = pop >>= \x -> pop >>= \y -> if x == 0 then emitError DivZero else push (y `div` x) >> increment
     step  NEG        = unOp negate
     step  AND        = binOp (\a b -> fromEnum (a /= 0 && b /= 0))
     step  OR         = binOp (\a b -> fromEnum (a /= 0 || b /= 0))
@@ -193,9 +209,9 @@ execWithStack xs is = (\(m, (_, ys)) -> m $> ys) <$> runStateT (runMaybeT run) (
     step  EQL        = binOp (\x y -> fromEnum (x == y))
     step  LSS        = binOp (\x y -> fromEnum (x <  y))
     step  GTR        = binOp (\x y -> fromEnum (x >  y))
-    step  GETINT     = liftIO getInt >>= push >> increment
+    step  GETINT     = getInt >>= push >> increment
     step  PUTINT     = pop >>= liftIO . print >> increment
-    step (JUMP l)    = maybe empty (lift . modify . first . const) (M.lookup l jt)
+    step (JUMP l)    = maybe (emitError (InvalidLabel l)) (modify . first . const) (M.lookup l jt)
     step (JUMPIFZ l) = pop >>= \x -> if x == 0 then step (JUMP l) else increment
     step (LOAD  a)   = load  a
     step (STORE a)   = store a

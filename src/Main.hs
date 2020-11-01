@@ -8,8 +8,6 @@ import TAM
 import System.Exit
 import System.FilePath
 import System.Environment
-import Data.Maybe
-import Control.Monad
 import Control.Exception
 
 main :: IO ()
@@ -90,7 +88,7 @@ compileMT p = case optimiseTAM <$> codeGen p of
 
 readTAM :: FilePath -> IO [TAM]
 readTAM file = do src <- readFileChecked file
-                  case optimiseTAM <$> parseTAM src of
+                  case parseTAM src of
                     Left   e -> print e *> exitFailure
                     Right is -> pure is
 
@@ -98,4 +96,7 @@ writeTAM :: FilePath -> [TAM] -> IO ()
 writeTAM file code = writeFileChecked file (formatTAM code) *> putStr "TAM code written to " *> putStrLn file
 
 runTAM :: [TAM] -> IO ()
-runTAM code = exec code >>= flip when (putStrLn "execution error: could not complete exection (e.g. division by zero or stack underflow)") . isNothing
+runTAM code = do r <- exec code
+                 case r of
+                   Left  e -> print e *> exitFailure
+                   Right _ -> pure ()

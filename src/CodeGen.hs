@@ -13,15 +13,15 @@ import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer
 import Control.Monad.Trans.Except
 
-data CodeGenError = Error Identifier ErrorDetails
+data CodeGenError = CodeGenError Identifier ErrorDetails
 data ErrorDetails = Undeclared | Multiple
 
 instance Show CodeGenError where
-  showsPrec _ (Error (Identifier sp v) d) = showString "code generation error at " . shows sp
-                                          . showString ": variable " . showString v
-                                          . showString (case d of
-                                                          Undeclared -> " is undeclared"
-                                                          Multiple   -> " is declared multiple times")
+  showsPrec _ (CodeGenError (Identifier sp v) d) = showString "code generation error at " . shows sp
+                                                 . showString ": variable " . showString v
+                                                 . showString (case d of
+                                                                 Undeclared -> " is undeclared"
+                                                                 Multiple   -> " is declared multiple times")
 
 newtype DList a = DList { runDList :: [a] -> [a] }
 
@@ -47,12 +47,12 @@ setAddress :: Monad m => Identifier -> Address -> CodeGen m ()
 setAddress i@(Identifier _ v) a = do env <- snd <$> lift get
                                      case M.insertLookupWithKey (\_ x _ -> x) v a env of
                                        (Nothing, env') -> lift (modify (second (const env')))
-                                       (Just  _,    _) -> emitError (Error i Multiple)
+                                       (Just  _,    _) -> emitError (CodeGenError i Multiple)
 
 getAddress :: Monad m => Identifier -> CodeGen m Address
 getAddress i@(Identifier _ v) = do env <- snd <$> lift get
                                    case M.lookup v env of
-                                     Nothing -> emitError (Error i Undeclared)
+                                     Nothing -> emitError (CodeGenError i Undeclared)
                                      Just  a -> pure a
 
 load :: Monad m => Identifier -> CodeGen m ()
