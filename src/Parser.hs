@@ -1,4 +1,24 @@
-module Parser where
+module Parser
+(
+  SrcPos(..),
+  annotate,
+  ParseError(..),
+  Parser(..),
+  parse,
+  (<?>),
+  nextToken,
+  peekToken,
+  srcPos,
+  etx,
+  sat,
+  token,
+  tokens,
+  space,
+  trim,
+  natural,
+  integer
+)
+where
 
 import Data.Char
 import Data.Maybe
@@ -43,6 +63,9 @@ instance Semigroup ParseError where
 
 newtype Parser t a = Parser { runParser :: StateT [(SrcPos, t)] (Either ParseError) a }
 
+parse :: Parser t a -> [(SrcPos, t)] -> Either ParseError (a, [(SrcPos, t)])
+parse = runStateT . runParser
+
 instance Functor (Parser t) where
   fmap f (Parser px) = Parser (fmap f px)
 
@@ -70,9 +93,6 @@ px <?> msg = Parser (do src <- get
                           Right (x, sx)           -> put sx *> lift (Right x))
 
 -- PARSER PRIMITIVES
-
-parse :: Parser t a -> [(SrcPos, t)] -> Either ParseError (a, [(SrcPos, t)])
-parse = runStateT . runParser
 
 next :: Parser t (SrcPos, t)
 next = do src <- Parser get

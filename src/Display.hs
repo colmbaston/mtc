@@ -85,40 +85,40 @@ astDisplayProg p (Program ds c) = node "Program"
                                 . lastLine p . astDisplayComm (lastIndent p) c
 
 astDisplayDecl :: ShowS -> Declaration -> ShowS
-astDisplayDecl p (Initialise i e) = node "Initialise"
-                                  . nextLine p . leaf i
-                                  . lastLine p . astDisplayExpr (lastIndent p) e
+astDisplayDecl p (Initialise (Identifier _ i) e) = node "Initialise"
+                                                 . nextLine p . leaf i
+                                                 . lastLine p . astDisplayExpr (lastIndent p) e
 
 astDisplayComm :: ShowS -> Command -> ShowS
-astDisplayComm p (Assign i e) = node "Assign"
-                              . nextLine p . leaf i
-                              . lastLine p . astDisplayExpr (lastIndent p) e
-astDisplayComm p (If e t f)   = node "If"
-                              . nextLine p . astDisplayExpr (nextIndent p) e
-                              . nextLine p . astDisplayComm (nextIndent p) t
-                              . lastLine p . astDisplayComm (lastIndent p) f
-astDisplayComm p (While e c)  = node "While"
-                              . nextLine p . astDisplayExpr (nextIndent p) e
-                              . lastLine p . astDisplayComm (lastIndent p) c
-astDisplayComm _ (GetInt i)   = node "GetInt"   . sameLine . leaf i
-astDisplayComm p (PrintInt e) = node "PrintInt" . sameLine . astDisplayExpr (sameIndent 12 p) e
-astDisplayComm p (Block cs)   = node "Block" . astDisplayList 9 astDisplayComm p cs
+astDisplayComm p (Assign (Identifier _ i) e) = node "Assign"
+                                             . nextLine p . leaf i
+                                             . lastLine p . astDisplayExpr (lastIndent p) e
+astDisplayComm p (If e t f)                  = node "If"
+                                             . nextLine p . astDisplayExpr (nextIndent p) e
+                                             . nextLine p . astDisplayComm (nextIndent p) t
+                                             . lastLine p . astDisplayComm (lastIndent p) f
+astDisplayComm p (While e c)                 = node "While"
+                                             . nextLine p . astDisplayExpr (nextIndent p) e
+                                             . lastLine p . astDisplayComm (lastIndent p) c
+astDisplayComm _ (GetInt (Identifier _ i))   = node "GetInt"   . sameLine . leaf i
+astDisplayComm p (PrintInt e)                = node "PrintInt" . sameLine . astDisplayExpr (sameIndent 12 p) e
+astDisplayComm p (Block cs)                  = node "Block" . astDisplayList 9 astDisplayComm p cs
 
 astDisplayExpr :: ShowS -> Expr -> ShowS
-astDisplayExpr _ (Literal n)          = node "Literal"  . sameLine . leaf (show n)
-astDisplayExpr _ (Variable i)         = node "Variable" . sameLine . leaf i
-astDisplayExpr p (UnaryOp op x)       = node "UnaryOp"
-                                      . nextLine p . leaf (showUnOp op)
-                                      . lastLine p . astDisplayExpr (lastIndent p) x
-astDisplayExpr p (BinaryOp op x y)    = node "BinaryOp"
-                                      . nextLine p . leaf (showBinOp op)
-                                      . nextLine p . astDisplayExpr (nextIndent p) x
-                                      . lastLine p . astDisplayExpr (lastIndent p) y
-astDisplayExpr p (TernaryOp op x y z) = node "TernaryOp"
-                                      . nextLine p . leaf (showTernOp op)
-                                      . nextLine p . astDisplayExpr (nextIndent p) x
-                                      . nextLine p . astDisplayExpr (nextIndent p) y
-                                      . lastLine p . astDisplayExpr (lastIndent p) z
+astDisplayExpr _ (Literal n)                 = node "Literal"  . sameLine . leaf (show n)
+astDisplayExpr _ (Variable (Identifier _ i)) = node "Variable" . sameLine . leaf i
+astDisplayExpr p (UnaryOp op x)              = node "UnaryOp"
+                                             . nextLine p . leaf (showUnOp op)
+                                             . lastLine p . astDisplayExpr (lastIndent p) x
+astDisplayExpr p (BinaryOp op x y)           = node "BinaryOp"
+                                             . nextLine p . leaf (showBinOp op)
+                                             . nextLine p . astDisplayExpr (nextIndent p) x
+                                             . lastLine p . astDisplayExpr (lastIndent p) y
+astDisplayExpr p (TernaryOp op x y z)        = node "TernaryOp"
+                                             . nextLine p . leaf (showTernOp op)
+                                             . nextLine p . astDisplayExpr (nextIndent p) x
+                                             . nextLine p . astDisplayExpr (nextIndent p) y
+                                             . lastLine p . astDisplayExpr (lastIndent p) z
 
 astDisplayList :: Int -> (ShowS -> a -> ShowS) -> ShowS -> [a] -> ShowS
 astDisplayList i f p [x] = sameLine . f (sameIndent i p) x
@@ -150,13 +150,13 @@ cstDisplayDecls p ds = node "DECLARATIONS"
                                  . lastLine p . cstDisplayDecls (lastIndent p) xs
 
 cstDisplayDecl :: ShowS -> Declaration -> ShowS
-cstDisplayDecl p (Initialise i e) = node "DECLARATION"
-                                  . nextLine p . leaf "var"
-                                  . case e of
-                                      Literal 0 -> lastLine p . cstDisplayIdent (lastIndent p) i
-                                      _         -> nextLine p . cstDisplayIdent (nextIndent p) i
-                                                 . nextLine p . leaf ":="
-                                                 . lastLine p . cstDisplayExpr (lastIndent p) e
+cstDisplayDecl p (Initialise (Identifier _ i) e) = node "DECLARATION"
+                                                 . nextLine p . leaf "var"
+                                                 . case e of
+                                                     Literal 0 -> lastLine p . cstDisplayIdent (lastIndent p) i
+                                                     _         -> nextLine p . cstDisplayIdent (nextIndent p) i
+                                                                . nextLine p . leaf ":="
+                                                                . lastLine p . cstDisplayExpr (lastIndent p) e
 
 cstDisplayComms :: ShowS -> [Command] -> ShowS
 cstDisplayComms p cs = node "COMMANDS"
@@ -170,30 +170,30 @@ cstDisplayComms p cs = node "COMMANDS"
 cstDisplayComm :: ShowS -> Command -> ShowS
 cstDisplayComm p c = node "COMMAND"
                    . case c of
-                       Assign i e -> nextLine p . cstDisplayIdent (nextIndent p) i
-                                   . nextLine p . leaf ":="
-                                   . lastLine p . cstDisplayExpr (lastIndent p) e
-                       If e t f   -> nextLine p . leaf "if"
-                                   . nextLine p . cstDisplayExpr (nextIndent p) e
-                                   . nextLine p . leaf "then"
-                                   . nextLine p . cstDisplayComm (nextIndent p) t
-                                   . nextLine p . leaf "else"
-                                   . lastLine p . cstDisplayComm (lastIndent p) f
-                       While e b  -> nextLine p . leaf "while"
-                                   . nextLine p . cstDisplayExpr (nextIndent p) e
-                                   . nextLine p . leaf "do"
-                                   . lastLine p . cstDisplayComm (lastIndent p) b
-                       GetInt i   -> nextLine p . leaf "getint"
-                                   . nextLine p . leaf "("
-                                   . nextLine p . cstDisplayIdent (nextIndent p) i
-                                   . lastLine p . leaf ")"
-                       PrintInt e -> nextLine p . leaf "printint"
-                                   . nextLine p . leaf "("
-                                   . nextLine p . cstDisplayExpr (nextIndent p) e
-                                   . lastLine p . leaf ")"
-                       Block cs   -> nextLine p . leaf "begin"
-                                   . nextLine p . cstDisplayComms (nextIndent p) cs
-                                   . lastLine p . leaf "end"
+                       Assign (Identifier _ i) e -> nextLine p . cstDisplayIdent (nextIndent p) i
+                                                  . nextLine p . leaf ":="
+                                                  . lastLine p . cstDisplayExpr (lastIndent p) e
+                       If e t f                  -> nextLine p . leaf "if"
+                                                  . nextLine p . cstDisplayExpr (nextIndent p) e
+                                                  . nextLine p . leaf "then"
+                                                  . nextLine p . cstDisplayComm (nextIndent p) t
+                                                  . nextLine p . leaf "else"
+                                                  . lastLine p . cstDisplayComm (lastIndent p) f
+                       While e b                 -> nextLine p . leaf "while"
+                                                  . nextLine p . cstDisplayExpr (nextIndent p) e
+                                                  . nextLine p . leaf "do"
+                                                  . lastLine p . cstDisplayComm (lastIndent p) b
+                       GetInt (Identifier _ i)   -> nextLine p . leaf "getint"
+                                                  . nextLine p . leaf "("
+                                                  . nextLine p . cstDisplayIdent (nextIndent p) i
+                                                  . lastLine p . leaf ")"
+                       PrintInt e                -> nextLine p . leaf "printint"
+                                                  . nextLine p . leaf "("
+                                                  . nextLine p . cstDisplayExpr (nextIndent p) e
+                                                  . lastLine p . leaf ")"
+                       Block cs                  -> nextLine p . leaf "begin"
+                                                  . nextLine p . cstDisplayComms (nextIndent p) cs
+                                                  . lastLine p . leaf "end"
 
 cstDisplayIdent :: ShowS -> String -> ShowS
 cstDisplayIdent _ i = node "IDENTIFIER" . sameLine . leaf i
@@ -259,10 +259,10 @@ cstDisplayExprMul p e = node "EXPR_MUL"
 cstDisplayExprAtom :: ShowS -> Expr -> ShowS
 cstDisplayExprAtom p e = node "EXPR_ATOM"
                        . case e of
-                           Literal n    -> sameLine   . node "NATURAL" . sameLine . leaf (show n)
-                           Variable i   -> sameLine   . cstDisplayIdent (lastIndent p) i
-                           UnaryOp op x -> nextLine p . leaf (showUnOp op)
-                                         . lastLine p . cstDisplayExprAtom (lastIndent p) x
-                           _            -> nextLine p . leaf "("
-                                         . nextLine p . cstDisplayExpr (nextIndent p) e
-                                         . lastLine p . leaf ")"
+                           Literal n                 -> sameLine   . node "NATURAL" . sameLine . leaf (show n)
+                           Variable (Identifier _ i) -> sameLine   . cstDisplayIdent (lastIndent p) i
+                           UnaryOp op x              -> nextLine p . leaf (showUnOp op)
+                                                      . lastLine p . cstDisplayExprAtom (lastIndent p) x
+                           _                         -> nextLine p . leaf "("
+                                                      . nextLine p . cstDisplayExpr (nextIndent p) e
+                                                      . lastLine p . leaf ")"

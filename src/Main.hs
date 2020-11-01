@@ -67,13 +67,13 @@ readFileChecked :: FilePath -> IO String
 readFileChecked file = catch (readFile file) (readFileError file)
 
 readFileError :: FilePath -> IOError -> IO a
-readFileError file _ =  putStr "error: failed to read " *> putStr file *> putStrLn " from the filesystem" *> exitFailure
+readFileError file _ =  putStr "file error: failed to read " *> putStr file *> putStrLn " from the filesystem" *> exitFailure
 
 writeFileChecked :: FilePath -> String -> IO ()
 writeFileChecked file contents = catch (writeFile file contents) (writeFileError file)
 
 writeFileError :: FilePath -> IOError -> IO a
-writeFileError file _ = putStr "error: failed to write " *> putStr file *> putStrLn " to the filesystem" *> exitFailure
+writeFileError file _ = putStr "file error: failed to write " *> putStr file *> putStrLn " to the filesystem" *> exitFailure
 
 -- MODE HANDLING
 
@@ -84,16 +84,18 @@ readMT file = do src <- readFileChecked file
                    Right p -> pure p
 
 compileMT :: Program -> IO [TAM]
-compileMT = maybe (putStrLn "error: failed to generate code for MT program (e.g. duplicate variable declaraions or use of an undeclared variable)" *> exitFailure) (pure . optimiseTAM) . codeGen
+compileMT p = case optimiseTAM <$> codeGen p of
+                Left   e -> print e *> exitFailure
+                Right is -> pure is
 
 readTAM :: FilePath -> IO [TAM]
 readTAM file = do src <- readFileChecked file
-                  case parseTAM src of
-                    Left e  -> print e *> exitFailure
-                    Right p -> pure p
+                  case optimiseTAM <$> parseTAM src of
+                    Left   e -> print e *> exitFailure
+                    Right is -> pure is
 
 writeTAM :: FilePath -> [TAM] -> IO ()
 writeTAM file code = writeFileChecked file (formatTAM code) *> putStr "TAM code written to " *> putStrLn file
 
 runTAM :: [TAM] -> IO ()
-runTAM code = exec code >>= flip when (putStrLn "error: could not complete exection (e.g. division by zero or stack underflow)") . isNothing
+runTAM code = exec code >>= flip when (putStrLn "execution error: could not complete exection (e.g. division by zero or stack underflow)") . isNothing

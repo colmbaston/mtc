@@ -1,6 +1,6 @@
 module AST
 (
-  Identifier,
+  Identifier(..),
   Program(..),
   Declaration(..),
   Command(..),
@@ -18,7 +18,7 @@ import Lexer
 import Data.Functor
 import Control.Applicative
 
-type Identifier  = String
+data Identifier  = Identifier SrcPos String
 data Program     = Program [Declaration] Command
 data Declaration = Initialise Identifier Expr
 data Command     = Assign     Identifier Expr
@@ -75,7 +75,7 @@ decl = Initialise <$> (token TVar <?> "expected token \"var\"" *> identifier)
                             _            -> pure (Literal 0))
 
 command :: Parser Token Command
-command =  Assign   <$> identifier
+command =  Assign   <$>  identifier
                     <*> (token TAssign  <?> "expected token \":=\""   *> expr)
        <|> If       <$> (token TIf       *> expr)
                     <*> (token TThen    <?> "expected token \"then\" or an operator (of appropriate precedence) followed by a subexpression" *> command)
@@ -96,7 +96,7 @@ commands = (:) <$> command <*> do t <- peekToken
 identifier :: Parser Token Identifier
 identifier = do t <- peekToken
                 case t of
-                  Just (TIdent i) -> nextToken $> i
+                  Just (TIdent i) -> Identifier <$> srcPos <*> (nextToken $> i)
                   _               -> empty <?> "expected an identifier"
 
 -- EXPRESSION PARSER
@@ -162,9 +162,9 @@ mulExpr = go id
 atomExpr :: Parser Token Expr
 atomExpr = do t <- peekToken
               case t of
-                Just (TLiteral n)  -> nextToken $> Literal  n
-                Just (TIdent   i)  -> nextToken $> Variable i
+                Just (TLiteral n)  -> Literal  <$> (nextToken $> n)
+                Just (TIdent   i)  -> Variable <$> (Identifier <$> srcPos <*> (nextToken $> i))
                 Just  TLeftPar     -> parens expr
-                Just  TSubtraction -> UnaryOp IntegerNegation <$> (nextToken *> atomExpr)
-                Just  TExclamation -> UnaryOp BooleanNegation <$> (nextToken *> atomExpr)
+                Just  TSubtraction -> UnaryOp IntegerNegation  <$> (nextToken *> atomExpr)
+                Just  TExclamation -> UnaryOp BooleanNegation  <$> (nextToken *> atomExpr)
                 _                  -> empty <?> "expected an expression"
