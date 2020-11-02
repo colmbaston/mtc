@@ -162,9 +162,9 @@ store a = do xs <- snd <$> get
                else emitError (InvalidAddress a)
 
 getInt :: MonadIO m => Machine m Int
-getInt = do xs <- liftIO (putStr "GETINT> " *> hFlush stdout *> getLine)
+getInt = do xs <- liftIO (putStr "GETINT> " >> hFlush stdout >> getLine)
             case fst <$> parse (trim integer <* token '\ETX' <* etx) (annotate xs) of
-              Left  _ -> liftIO (putStrLn "could not parse as integer") *> getInt
+              Left  _ -> liftIO (putStrLn "could not parse as integer") >> getInt
               Right n -> pure n
 
 type JumpTable = Map Label Int
@@ -193,11 +193,11 @@ execWithStack xs is = fmap snd <$> runExceptT (execStateT run (0, xs))
              if 0 <= pc && pc < len
                then case ia ! pc of
                       HALT -> liftIO (putStrLn "HALTED")
-                      i    -> step i *> run
+                      i    -> step i >> run
                else emitError BufferOverrun
 
     step :: MonadIO m => TAM -> Machine m ()
-    step (LOADL n)   = push n *> increment
+    step (LOADL n)   = push n >> increment
     step  ADD        = binOp (+)
     step  SUB        = binOp (-)
     step  MUL        = binOp (*)
@@ -228,7 +228,7 @@ optimiseTAM :: [TAM] -> [TAM]
 optimiseTAM = fixedPoint (fixedPoint mergeLabels . peephole)
   where
     fixedPoint :: Eq a => (a -> a) -> a -> a
-    fixedPoint f x = let y = f x in if x == y then y else fixedPoint f y
+    fixedPoint f x = let y = f x in if x == y then x else fixedPoint f y
 
     peephole :: [TAM] -> [TAM]
     peephole []                                     = []
