@@ -1,4 +1,5 @@
   LOADL   0
+  LOADL   0
   GETINT
   STORE   [0]
 #0:
@@ -8,17 +9,17 @@
   JUMPIFZ #1
   LOAD    [0]
   PUTINT
-  LOADL   2
   LOAD    [0]
   LOADL   2
   DIV
-  MUL
+  STORE   [1]
   LOAD    [0]
+  LOADL   2
+  LOAD    [1]
+  MUL
   EQL
   JUMPIFZ #2
-  LOAD    [0]
-  LOADL   2
-  DIV
+  LOAD    [1]
   STORE   [0]
   JUMP    #0
 #2:

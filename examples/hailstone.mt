@@ -1,13 +1,15 @@
 let
-  var n
+  var n;
+  var half
 in
 begin
   getint (n);
   while n > 1 do
   begin
     printint(n);
-    if 2 * (n / 2) == n
-      then n := n / 2
+    half := n / 2;
+    if n == 2 * half
+      then n := half
       else n := 3*n + 1
   end;
   printint(1)
