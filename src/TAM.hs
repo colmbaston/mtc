@@ -201,7 +201,11 @@ execWithStack xs is = fmap snd <$> runExceptT (execStateT run (0, xs))
     step  ADD        = binOp (+)
     step  SUB        = binOp (-)
     step  MUL        = binOp (*)
-    step  DIV        = pop >>= \x -> pop >>= \y -> if x == 0 then emitError DivZero else push (y `div` x) >> increment
+    step  DIV        = do x <- pop
+                          y <- pop
+                          if x == 0
+                            then emitError DivZero
+                            else push (y `div` x) >> increment
     step  NEG        = unOp negate
     step  AND        = binOp (\a b -> fromEnum (a /= 0 && b /= 0))
     step  OR         = binOp (\a b -> fromEnum (a /= 0 || b /= 0))

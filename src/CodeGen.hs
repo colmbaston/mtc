@@ -17,11 +17,11 @@ data CodeGenError = CodeGenError Identifier ErrorDetails
 data ErrorDetails = Undeclared | Multiple
 
 instance Show CodeGenError where
-  showsPrec _ (CodeGenError (Identifier sp v) d) = showString "code generation error at " . shows sp
-                                                 . showString ": variable " . showString v
+  showsPrec _ (CodeGenError (Identifier sp v) d) = showString "code generation error at "  . shows sp
+                                                 . showString ": variable " . showString v . showString " is "
                                                  . showString (case d of
-                                                                 Undeclared -> " is undeclared"
-                                                                 Multiple   -> " is declared multiple times")
+                                                                 Undeclared -> "undeclared"
+                                                                 Multiple   -> "declared multiple times")
 
 newtype DList a = DList { runDList :: [a] -> [a] }
 
