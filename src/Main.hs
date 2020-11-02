@@ -62,16 +62,16 @@ usageFail = do p <- getProgName
 -- FILE IO
 
 readFileChecked :: FilePath -> IO String
-readFileChecked file = catch (readFile file) (readFileError file)
-
-readFileError :: FilePath -> IOError -> IO a
-readFileError file _ =  putStr "file error: failed to read " *> putStr file *> putStrLn " from the filesystem" *> exitFailure
+readFileChecked file = catch (readFile file) handler
+  where
+    handler :: IOError -> IO a
+    handler _ = putStr "file error: failed to read " *> putStr file *> putStrLn " from the filesystem" *> exitFailure
 
 writeFileChecked :: FilePath -> String -> IO ()
-writeFileChecked file contents = catch (writeFile file contents) (writeFileError file)
-
-writeFileError :: FilePath -> IOError -> IO a
-writeFileError file _ = putStr "file error: failed to write " *> putStr file *> putStrLn " to the filesystem" *> exitFailure
+writeFileChecked file contents = catch (writeFile file contents) handler
+  where
+    handler :: IOError -> IO a
+    handler _ = putStr "file error: failed to write " *> putStr file *> putStrLn " to the filesystem" *> exitFailure
 
 -- MODE HANDLING
 

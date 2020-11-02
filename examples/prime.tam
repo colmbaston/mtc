@@ -1,7 +1,6 @@
   LOADL   0
   LOADL   2
   LOADL   1
-  LOADL   0
   GETINT
   STORE   [0]
 #0:
@@ -14,32 +13,23 @@
   NOT
   AND
   JUMPIFZ #1
-  LOAD    [0]
-  STORE   [3]
-#2:
-  LOAD    [3]
-  LOADL   0
-  GTR
-  JUMPIFZ #3
-  LOAD    [3]
   LOAD    [1]
-  SUB
-  STORE   [3]
-  JUMP    #2
-#3:
-  LOAD    [3]
-  LOADL   0
+  LOAD    [0]
+  LOAD    [1]
+  DIV
+  MUL
+  LOAD    [0]
   EQL
   NOT
   STORE   [2]
   LOAD    [1]
   LOADL   2
   EQL
-  JUMPIFZ #4
+  JUMPIFZ #2
   LOADL   3
   STORE   [1]
   JUMP    #0
-#4:
+#2:
   LOAD    [1]
   LOADL   2
   ADD

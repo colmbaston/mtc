@@ -1,16 +1,13 @@
 let
   var n;
   var i        := 2;
-  var continue := 1;
-  var mod
+  var continue := 1
 in
 begin
   getint(n);
   while continue && i*i <= n do
     begin
-      mod := n;
-      while mod > 0 do mod := mod - i;
-      continue := mod != 0;
+      continue := i * (n / i) != n;
       if i == 2
         then i := 3
         else i := i + 2
