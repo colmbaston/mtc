@@ -1,52 +1,79 @@
   LOADL   0
-  LOADL   2
-  LOADL   1
+  LOADL   0
+  LOADL   0
+  LOADL   0
   GETINT
   STORE   [0]
+  GETINT
+  STORE   [1]
+  LOAD    [0]
+  LOADL   2
+  GTR
+  NOT
+  LOADL   2
+  LOAD    [1]
+  GTR
+  NOT
+  AND
+  JUMPIFZ #0
+  LOADL   2
+  PUTINT
+  LOADL   3
+  STORE   [0]
+  JUMP    #2
 #0:
+  LOADL   2
+  LOAD    [0]
+  LOADL   2
+  DIV
+  MUL
+  LOADL   1
+  ADD
+  STORE   [0]
+#2:
+  LOAD    [0]
+  LOAD    [1]
+  GTR
+  NOT
+  JUMPIFZ #3
+  LOADL   3
+  STORE   [2]
+  LOADL   1
+  STORE   [3]
+#4:
+  LOAD    [3]
   LOAD    [2]
-  LOAD    [1]
-  LOAD    [1]
+  LOAD    [2]
   MUL
   LOAD    [0]
   GTR
   NOT
   AND
-  JUMPIFZ #1
-  LOAD    [1]
+  JUMPIFZ #5
+  LOAD    [2]
   LOAD    [0]
-  LOAD    [1]
+  LOAD    [2]
   DIV
   MUL
   LOAD    [0]
   EQL
   NOT
-  STORE   [2]
-  LOAD    [1]
-  LOADL   2
-  EQL
-  JUMPIFZ #2
-  LOADL   3
-  STORE   [1]
-  JUMP    #0
-#2:
-  LOAD    [1]
-  LOADL   2
-  ADD
-  STORE   [1]
-  JUMP    #0
-#1:
-  LOAD    [0]
-  LOADL   2
-  LSS
-  LOADL   0
-  MUL
-  LOAD    [0]
-  LOADL   2
-  LSS
-  NOT
+  STORE   [3]
   LOAD    [2]
-  MUL
+  LOADL   2
   ADD
+  STORE   [2]
+  JUMP    #4
+#5:
+  LOAD    [3]
+  JUMPIFZ #7
+  LOAD    [0]
   PUTINT
+#7:
+  LOAD    [0]
+  LOADL   2
+  ADD
+  STORE   [0]
+  JUMP    #2
+#3:
   HALT
