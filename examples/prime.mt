@@ -7,6 +7,12 @@ in
 begin
   getint(lower);
   getint(upper);
+  if lower < 2
+    then lower := 2
+    else lower := lower;
+  if upper < 0
+    then upper := 0
+    else upper := upper;
   if lower <= 2 && 2 <= upper
     then begin printint(2); lower := 3 end
     else lower := 2 * (lower / 2) + 1;
