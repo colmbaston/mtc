@@ -6,8 +6,10 @@ import           Data.Functor
 import           Data.Bifunctor
 import           Data.Map      (Map)
 import qualified Data.Map      as M
+import           Data.Set      (Set)
+import qualified Data.Set      as Set
 import           Data.Sequence (Seq(..), (|>))
-import qualified Data.Sequence as S
+import qualified Data.Sequence as Seq
 import           Data.Array
 
 import Control.Applicative
@@ -151,14 +153,14 @@ binOp op = flip op <$> pop <*> pop >>= push >> increment
 
 load :: Monad m => Address -> Machine m ()
 load a = do xs <- snd <$> get
-            case S.lookup a xs of
+            case Seq.lookup a xs of
               Nothing -> emitError (InvalidAddress a)
               Just  x -> push x >> increment
 
 store :: Monad m => Address -> Machine m ()
 store a = do xs <- snd <$> get
-             if 0 <= a && a < S.length xs
-               then pop >>= modify . second . S.update a >> increment
+             if 0 <= a && a < Seq.length xs
+               then pop >>= modify . second . Seq.update a >> increment
                else emitError (InvalidAddress a)
 
 getInt :: MonadIO m => Machine m Int
@@ -178,7 +180,7 @@ instArray :: [TAM] -> (Int, Array Int TAM)
 instArray is = let l = length is in (l, listArray (0, l-1) is)
 
 exec :: [TAM] -> IO (Either ExecError Stack)
-exec = execWithStack S.empty
+exec = execWithStack Seq.empty
 
 execWithStack :: Stack -> [TAM] -> IO (Either ExecError Stack)
 execWithStack xs is = fmap snd <$> runExceptT (execStateT run (0, xs))
@@ -225,23 +227,24 @@ execWithStack xs is = fmap snd <$> runExceptT (execStateT run (0, xs))
 -- OPTIMISING TAM CODE
 
 optimiseTAM :: [TAM] -> [TAM]
-optimiseTAM = fixedPoint (fixedPoint mergeLabels . peephole)
+optimiseTAM = fixedPoint (cullLabels . mergeLabels . peephole)
   where
     fixedPoint :: Eq a => (a -> a) -> a -> a
     fixedPoint f x = let y = f x in if x == y then x else fixedPoint f y
 
     peephole :: [TAM] -> [TAM]
-    peephole []                                     = []
-    peephole (LOAD  a : STORE   b : xs) | a == b    =     peephole            xs
-    peephole (JUMP  a : LABEL   b : xs) | a == b    =     peephole (LABEL b : xs)
-    peephole (LOADL a : JUMPIFZ b : xs) | a == 0    =     peephole (JUMP  b : xs)
-                                        | otherwise =     peephole            xs
-    peephole       (x : NEG : NEG : xs)             =     peephole       (x : xs)
-    peephole       (x : NOT : NOT : xs) | boolOp x  =     peephole       (x : xs)
-    peephole                   (x : xs)             = x : peephole            xs
+    peephole []                                               = []
+    peephole (LOAD  a : STORE   b : xs)           | a == b    =     peephole            xs
+    peephole (JUMP  a : LABEL   b : xs)           | a == b    =     peephole (LABEL b : xs)
+    peephole (LOADL a : JUMPIFZ b : xs)           | a == 0    =     peephole (JUMP  b : xs)
+                                                  | otherwise =     peephole            xs
+    peephole (LOAD a  : JUMPIFZ b : LABEL c : xs) | b == c    =     peephole (LABEL c : xs)
+    peephole (x : NEG       : NEG     : xs)                   =     peephole (x       : xs)
+    peephole (x : NOT       : NOT     : xs)       | boolOp x  =     peephole (x       : xs)
+    peephole (x                       : xs)                   = x : peephole            xs
 
     mergeLabels :: [TAM] -> [TAM]
-    mergeLabels is = foldr (mapMaybe . uncurry relabel) is (alias (zip is (tail is)))
+    mergeLabels = fixedPoint (\is -> foldr (mapMaybe . uncurry relabel) is (alias (zip is (tail is))))
       where
         alias :: [(TAM, TAM)] -> Maybe (Label, Label)
         alias []                        = Nothing
@@ -254,6 +257,24 @@ optimiseTAM = fixedPoint (fixedPoint mergeLabels . peephole)
         relabel a b (JUMP     c) | c == a = Just (JUMP    b)
         relabel a b (JUMPIFZ  c) | c == a = Just (JUMPIFZ b)
         relabel _ _  i                    = Just  i
+
+    cullLabels :: [TAM] -> [TAM]
+    cullLabels is = let ls = M.keysSet (M.filter not (foldr referenced M.empty is)) in foldr (remove ls) [] is
+      where
+        referenced :: TAM -> Map Label Bool -> Map Label Bool
+        referenced (JUMP    l) m = M.insert          l True  m
+        referenced (JUMPIFZ l) m = M.insert          l True  m
+        referenced (LABEL   l) m = M.insertWith (||) l False m
+        referenced  _          m = m
+
+        remove :: Set Label -> TAM -> [TAM] -> [TAM]
+        remove s (LABEL l) js | l `Set.member` s = js
+        remove _  i        js                    = i : js
+
+    loadOp :: TAM -> Bool
+    loadOp (LOADL _) = True
+    loadOp (LOAD  _) = True
+    loadOp  _        = False
 
     boolOp :: TAM -> Bool
     boolOp AND = True
