@@ -99,15 +99,14 @@ codeGenExpr (Literal   n)                 =    emitCode [LOADL n]
 codeGenExpr (Variable  i)                 =    load i
 codeGenExpr (UnaryOp   op x)              =    codeGenExpr x *>                  codeGenUnOp  op
 codeGenExpr (BinaryOp  op x y)            =    codeGenExpr x *> codeGenExpr y *> codeGenBinOp op
-codeGenExpr (TernaryOp Conditional x y z) = do x' <- lift (execWriterT (codeGenExpr x))
-                                               tell x'
-                                               emitCode [NOT, NOT]
+codeGenExpr (TernaryOp Conditional x y z) = do l1 <- freshLabel
+                                               l2 <- freshLabel
+                                               codeGenExpr x
+                                               emitCode [JUMPIFZ l1]
                                                codeGenExpr y
-                                               emitCode [MUL]
-                                               tell x'
-                                               emitCode [NOT]
+                                               emitCode [JUMP l2, LABEL l1]
                                                codeGenExpr z
-                                               emitCode [MUL, ADD]
+                                               emitCode [LABEL l2]
 
 codeGenUnOp :: Monad m => UnaryOp -> CodeGen m ()
 codeGenUnOp IntegerNegation = emitCode [NEG]

@@ -9,17 +9,23 @@
   LOAD    [0]
   LOADL   2
   LSS
-  JUMPIFZ #1
+  JUMPIFZ #0
   LOADL   2
-  STORE   [0]
+  JUMP    #1
+#0:
+  LOAD    [0]
 #1:
+  STORE   [0]
   LOAD    [1]
   LOADL   0
   LSS
-  JUMPIFZ #3
+  JUMPIFZ #2
   LOADL   0
-  STORE   [1]
+  JUMP    #3
+#2:
+  LOAD    [1]
 #3:
+  STORE   [1]
   LOAD    [0]
   LOADL   2
   GTR
