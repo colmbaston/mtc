@@ -1,6 +1,7 @@
-module Lexer (Token(..), tokenise) where
+module LexerMT (Token(..), tokenise) where
 
-import Parser
+import SrcPos
+import ParserLib
 import Data.Char
 import Data.Functor
 import Control.Applicative

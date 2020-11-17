@@ -8,32 +8,34 @@ module AST
   UnaryOp(..),
   BinaryOp(..),
   TernaryOp(..),
-  parseProgram,
+  astDisplay
 )
 where
 
-import Parser
-import Lexer
+import SrcPos
 
-import Data.Functor
-import Control.Applicative
+-- MT AST
 
 data Identifier  = Identifier SrcPos String
 data Program     = Program [Declaration] Command
 data Declaration = Initialise Identifier Expr
+
 data Command     = Assign     Identifier Expr
                  | If Expr Command Command
                  | While Expr Command
                  | GetInt Identifier
                  | PrintInt Expr
                  | Block [Command]
+
 data Expr        = Literal   Int
                  | Variable  Identifier
                  | UnaryOp   UnaryOp   Expr
                  | BinaryOp  BinaryOp  Expr Expr
                  | TernaryOp TernaryOp Expr Expr Expr
+
 data UnaryOp     = IntegerNegation
                  | BooleanNegation
+
 data BinaryOp    = Addition
                  | Subtraction
                  | Multiplication
@@ -46,125 +48,104 @@ data BinaryOp    = Addition
                  | Greater
                  | LessEqual
                  | GreaterEqual
+
 data TernaryOp   = Conditional
 
--- PROGRAM PARSER
+-- DISPLAYING AST AS A TREE
 
-parseProgram :: String -> Either ParseError Program
-parseProgram src = tokenise src >>= fmap fst . parse (prog <* token ETX <* etx <?> "successfully parsed a program, but there are unconsumed tokens")
+sameLine :: ShowS
+sameLine = showString " ── "
 
-parens :: Parser Token a -> Parser Token a
-parens px = do sp <- srcPos
-               token TLeftPar <?> "expected token \"(\"" *> px <*  token TRightPar <?> ("expected token \")\" to close the \"(\" at " ++ show sp)
+nextLine :: ShowS -> ShowS
+nextLine p = showChar '\n' . p . showString "├── "
 
-prog :: Parser Token Program
-prog = Program <$> (token TLet <?> "expected token \"let\"" *> decls)
-               <*> (token TIn  <?> "expected token \"in\" or a \";\" followed by another declaration" *> command)
+lastLine :: ShowS -> ShowS
+lastLine p = showChar '\n' . p . showString "└── "
 
-decls :: Parser Token [Declaration]
-decls = (:) <$> decl <*> do t <- peekToken
-                            case t of
-                              Just TSemicolon -> nextToken *> decls
-                              _               -> pure []
+sameIndent :: Int -> ShowS -> ShowS
+sameIndent n p = p . showString (replicate n ' ')
 
-decl :: Parser Token Declaration
-decl = Initialise <$> (token TVar <?> "expected token \"var\"" *> identifier)
-                  <*> (do t <- peekToken
-                          case t of
-                            Just TAssign -> nextToken *> expr
-                            _            -> pure (Literal 0))
+nextIndent :: ShowS -> ShowS
+nextIndent p = p . showString "│   "
 
-command :: Parser Token Command
-command =  Assign   <$>  identifier
-                    <*> (token TAssign  <?> "expected token \":=\""   *> expr)
-       <|> If       <$> (token TIf       *> expr)
-                    <*> (token TThen    <?> "expected token \"then\" or an operator (of appropriate precedence) followed by a subexpression" *> command)
-                    <*> (token TElse    <?> "expected token \"else\"" *> command)
-       <|> While    <$> (token TWhile    *> expr)
-                    <*> (token TDo      <?> "expected token \"do\" or an operator (of appropriate precedence) followed by a subexpression"   *> command)
-       <|> GetInt   <$> (token TGetInt   *> parens identifier)
-       <|> PrintInt <$> (token TPrintInt *> parens expr)
-       <|> Block    <$> (token TBegin    *> commands <* token TEnd <?> "expected token \"end\" or a \";\" followed by another command")
-       <|> empty    <?> "expected a command"
+lastIndent :: ShowS -> ShowS
+lastIndent p = p . showString "    "
 
-commands :: Parser Token [Command]
-commands = (:) <$> command <*> do t <- peekToken
-                                  case t of
-                                    Just TSemicolon -> nextToken *> commands
-                                    _               -> pure []
+node :: String -> ShowS
+node s = showString "\ESC[1;38;2;255;128;0m" . showString s . showString "\ESC[0m"
 
-identifier :: Parser Token Identifier
-identifier = do t <- peekToken
-                case t of
-                  Just (TIdent i) -> Identifier <$> srcPos <*> (nextToken $> i)
-                  _               -> empty <?> "expected an identifier"
+leaf :: String -> ShowS
+leaf s = showString "\ESC[1;36m" . showString s . showString "\ESC[0m"
 
--- EXPRESSION PARSER
+showUnOp :: UnaryOp -> String
+showUnOp IntegerNegation = "-"
+showUnOp BooleanNegation = "!"
 
-expr :: Parser Token Expr
-expr = condExpr
+showBinOp :: BinaryOp -> String
+showBinOp Addition       = "+"
+showBinOp Subtraction    = "-"
+showBinOp Multiplication = "*"
+showBinOp Division       = "/"
+showBinOp Conjunction    = "&&"
+showBinOp Disjunction    = "||"
+showBinOp Equal          = "=="
+showBinOp NotEqual       = "!="
+showBinOp Less           = "<"
+showBinOp LessEqual      = "<="
+showBinOp Greater        = ">"
+showBinOp GreaterEqual   = ">="
 
-condExpr :: Parser Token Expr
-condExpr = do x <- disjExpr
-              t <- peekToken
-              case t of
-                Just TQuestion -> TernaryOp Conditional x <$> (nextToken *> disjExpr) <*> (token TColon <?> "expected token \":\"" *> disjExpr)
-                _              -> pure x
+showTernOp :: TernaryOp -> String
+showTernOp Conditional = "?:"
 
-disjExpr :: Parser Token Expr
-disjExpr = do x <- conjExpr
-              t <- peekToken
-              case t of
-                Just TDisjunction -> BinaryOp Disjunction x <$> (nextToken *> disjExpr)
-                _                 -> pure x
+astDisplay :: Program -> String
+astDisplay p = astDisplayProg id p ""
 
-conjExpr :: Parser Token Expr
-conjExpr = do x <- relExpr
-              t <- peekToken
-              case t of
-                Just TConjunction -> BinaryOp Conjunction x <$> (nextToken *> conjExpr)
-                _                 -> pure x
+astDisplayProg :: ShowS -> Program -> ShowS
+astDisplayProg p (Program ds c) = node "Program"
+                                . nextLine p . node "Declarations" . astDisplayList 16 astDisplayDecl (nextIndent p) ds
+                                . lastLine p . astDisplayComm (lastIndent p) c
 
-relExpr :: Parser Token Expr
-relExpr = do x <- addExpr
-             t <- peekToken
-             case t of
-               Just TEqual        -> BinaryOp Equal        x <$> (nextToken *> addExpr)
-               Just TNotEqual     -> BinaryOp NotEqual     x <$> (nextToken *> addExpr)
-               Just TLess         -> BinaryOp Less         x <$> (nextToken *> addExpr)
-               Just TLessEqual    -> BinaryOp LessEqual    x <$> (nextToken *> addExpr)
-               Just TGreater      -> BinaryOp Greater      x <$> (nextToken *> addExpr)
-               Just TGreaterEqual -> BinaryOp GreaterEqual x <$> (nextToken *> addExpr)
-               _                  -> pure x
+astDisplayDecl :: ShowS -> Declaration -> ShowS
+astDisplayDecl p (Initialise (Identifier _ i) e) = node "Initialise"
+                                                 . nextLine p . leaf i
+                                                 . lastLine p . astDisplayExpr (lastIndent p) e
 
-addExpr :: Parser Token Expr
-addExpr = go id
+astDisplayComm :: ShowS -> Command -> ShowS
+astDisplayComm p (Assign (Identifier _ i) e) = node "Assign"
+                                             . nextLine p . leaf i
+                                             . lastLine p . astDisplayExpr (lastIndent p) e
+astDisplayComm p (If e t f)                  = node "If"
+                                             . nextLine p . astDisplayExpr (nextIndent p) e
+                                             . nextLine p . astDisplayComm (nextIndent p) t
+                                             . lastLine p . astDisplayComm (lastIndent p) f
+astDisplayComm p (While e c)                 = node "While"
+                                             . nextLine p . astDisplayExpr (nextIndent p) e
+                                             . lastLine p . astDisplayComm (lastIndent p) c
+astDisplayComm _ (GetInt (Identifier _ i))   = node "GetInt"   . sameLine . leaf i
+astDisplayComm p (PrintInt e)                = node "PrintInt" . sameLine . astDisplayExpr (sameIndent 12 p) e
+astDisplayComm p (Block cs)                  = node "Block" . astDisplayList 9 astDisplayComm p cs
+
+astDisplayExpr :: ShowS -> Expr -> ShowS
+astDisplayExpr _ (Literal n)                 = node "Literal"  . sameLine . leaf (show n)
+astDisplayExpr _ (Variable (Identifier _ i)) = node "Variable" . sameLine . leaf i
+astDisplayExpr p (UnaryOp op x)              = node "UnaryOp"
+                                             . nextLine p . leaf (showUnOp op)
+                                             . lastLine p . astDisplayExpr (lastIndent p) x
+astDisplayExpr p (BinaryOp op x y)           = node "BinaryOp"
+                                             . nextLine p . leaf (showBinOp op)
+                                             . nextLine p . astDisplayExpr (nextIndent p) x
+                                             . lastLine p . astDisplayExpr (lastIndent p) y
+astDisplayExpr p (TernaryOp op x y z)        = node "TernaryOp"
+                                             . nextLine p . leaf (showTernOp op)
+                                             . nextLine p . astDisplayExpr (nextIndent p) x
+                                             . nextLine p . astDisplayExpr (nextIndent p) y
+                                             . lastLine p . astDisplayExpr (lastIndent p) z
+
+astDisplayList :: Int -> (ShowS -> a -> ShowS) -> ShowS -> [a] -> ShowS
+astDisplayList i f p [x] = sameLine . f (sameIndent i p) x
+astDisplayList _ f p xs  = go xs
   where
-    go :: (Expr -> Expr) -> Parser Token Expr
-    go f = do x <- f <$> mulExpr
-              t <- peekToken
-              case t of
-                Just TAddition    -> nextToken *> go (BinaryOp Addition    x)
-                Just TSubtraction -> nextToken *> go (BinaryOp Subtraction x)
-                _                 -> pure x
-
-mulExpr :: Parser Token Expr
-mulExpr = go id
-  where
-    go :: (Expr -> Expr) -> Parser Token Expr
-    go f = do x <- f <$> atomExpr
-              t <- peekToken
-              case t of
-                Just TMultiplication -> nextToken *> go (BinaryOp Multiplication x)
-                Just TDivision       -> nextToken *> go (BinaryOp Division       x)
-                _                    -> pure x
-
-atomExpr :: Parser Token Expr
-atomExpr = do t <- peekToken
-              case t of
-                Just (TLiteral n)  -> Literal  <$> (nextToken $> n)
-                Just (TIdent   i)  -> Variable <$> (Identifier <$> srcPos <*> (nextToken $> i))
-                Just  TLeftPar     -> parens expr
-                Just  TSubtraction -> UnaryOp IntegerNegation  <$> (nextToken *> atomExpr)
-                Just  TExclamation -> UnaryOp BooleanNegation  <$> (nextToken *> atomExpr)
-                _                  -> empty <?> "expected an expression"
+    go []     = id
+    go [y]    = lastLine p . f (lastIndent p) y
+    go (y:ys) = nextLine p . f (nextIndent p) y . go ys

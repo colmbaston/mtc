@@ -12,14 +12,14 @@ import           Data.Sequence (Seq(..), (|>))
 import qualified Data.Sequence as Seq
 import           Data.Array
 
+import System.IO
 import Control.Applicative
 import Control.Monad.IO.Class
 import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Except
 
-import Parser
-import System.IO
+import ParserLib
 
 type Label   = String
 type Address = Int
@@ -238,7 +238,7 @@ optimiseTAM = fixedPoint (cullLabels . mergeLabels . peephole)
     peephole (JUMP  a : LABEL   b : xs)           | a == b    =     peephole (LABEL b : xs)
     peephole (LOADL a : JUMPIFZ b : xs)           | a == 0    =     peephole (JUMP  b : xs)
                                                   | otherwise =     peephole            xs
-    peephole (LOAD a  : JUMPIFZ b : LABEL c : xs) | b == c    =     peephole (LABEL c : xs)
+    peephole (LOAD _  : JUMPIFZ a : LABEL b : xs) | a == b    =     peephole (LABEL b : xs)
     peephole (x : NEG       : NEG     : xs)                   =     peephole (x       : xs)
     peephole (x : NOT       : NOT     : xs)       | boolOp x  =     peephole (x       : xs)
     peephole (x                       : xs)                   = x : peephole            xs
@@ -270,11 +270,6 @@ optimiseTAM = fixedPoint (cullLabels . mergeLabels . peephole)
         remove :: Set Label -> TAM -> [TAM] -> [TAM]
         remove s (LABEL l) js | l `Set.member` s = js
         remove _  i        js                    = i : js
-
-    loadOp :: TAM -> Bool
-    loadOp (LOADL _) = True
-    loadOp (LOAD  _) = True
-    loadOp  _        = False
 
     boolOp :: TAM -> Bool
     boolOp AND = True

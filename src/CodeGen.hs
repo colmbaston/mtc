@@ -31,6 +31,8 @@ instance Semigroup (DList a) where
 instance Monoid (DList a) where
   mempty = DList id
 
+-- CODE GENERATION MONAD
+
 type Environment = Map String Address
 type CodeGen m   = WriterT (DList TAM) (StateT (Int, Environment) (ExceptT CodeGenError m))
 
@@ -60,6 +62,8 @@ load i = getAddress i >>= emitCode . pure . LOAD
 
 store :: Monad m => Identifier -> CodeGen m ()
 store i = getAddress i >>= emitCode . pure . STORE
+
+-- CODE GENERATOR
 
 codeGen :: Program -> Either CodeGenError [TAM]
 codeGen p = ($ []) . runDList <$> runExcept (evalStateT (execWriterT (codeGenProg p)) (0, M.empty))
