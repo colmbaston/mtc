@@ -1,6 +1,6 @@
 let
-  var n;
-  var half
+  var n    : Integer;
+  var half : Integer
 in
 begin
   getint (n);

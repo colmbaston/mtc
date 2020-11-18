@@ -1,8 +1,8 @@
 let
-  var lower;
-  var upper;
-  var i;
-  var continue
+  var lower    : Integer;
+  var upper    : Integer;
+  var i        : Integer;
+  var continue : Boolean
 in
 begin
   getint(lower);

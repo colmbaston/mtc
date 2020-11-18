@@ -1,7 +1,7 @@
 let
-  var n;
-  var x;
-  var i
+  var n : Integer;
+  var x : Integer;
+  var i : Integer
 in
 begin
   getint (n);

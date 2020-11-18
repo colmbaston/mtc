@@ -1,8 +1,8 @@
 let
-  var a;
-  var b;
-  var c;
-  var n
+  var a : Integer;
+  var b : Integer;
+  var c : Integer;
+  var n : Integer
 in
 begin
   getint(n);
