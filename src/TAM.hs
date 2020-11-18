@@ -224,7 +224,7 @@ exec is = fmap stack <$> runExceptT (execStateT run (Memory 0 0 0 Seq.empty))
              if 0 <= pc && pc < len
                then case ia ! pc of
                       HALT -> liftIO (putStrLn "HALTED")
-                      i    -> do step i >> run
+                      i    -> step i >> run
                else emitError BufferOverrun
 
     step :: MonadIO m => TAM -> Machine m ()
@@ -313,7 +313,7 @@ optimiseTAM = fixedPoint (cullLabels . mergeLabels . peephole)
         referenced  _          m = m
 
         remove :: Set String -> TAM -> [TAM] -> [TAM]
-        remove s (LABEL l) js | l `Set.member` s = js
+        remove s (LABEL l) js | l `Set.member` s =     js
         remove _  i        js                    = i : js
 
     boolOp :: TAM -> Bool
