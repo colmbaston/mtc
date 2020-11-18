@@ -42,7 +42,7 @@ emitCode is = tell (DList (is ++))
 emitError :: Monad m => CodeGenError -> CodeGen m a
 emitError = lift . lift . throwE
 
-freshLabel :: Monad m => CodeGen m Label
+freshLabel :: Monad m => CodeGen m String
 freshLabel = lift (state (\(l, m) -> (show l, (l+1, m))))
 
 setAddress :: Monad m => Identifier -> Address -> CodeGen m ()
