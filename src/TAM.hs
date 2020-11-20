@@ -150,7 +150,7 @@ instance Show ExecError where
                                    DivZero          -> showString "division by zero"
 
 type Stack     = Seq Int
-data Memory    = Memory { programCounter :: Int, stackPointer :: Int, localBase :: Int, stack :: Stack }
+data Memory    = Memory { programCounter :: Int, localBase :: Int, stack :: Stack }
 type Machine m = StateT Memory (ExceptT ExecError m)
 
 emitError :: Monad m => ErrorDetails -> Machine m a
@@ -161,13 +161,13 @@ increment :: Monad m => Machine m ()
 increment = modify (\mem -> mem { programCounter = programCounter mem + 1 })
 
 push :: Monad m => Int -> Machine m ()
-push x = modify (\mem -> mem { stackPointer = stackPointer mem + 1, stack = stack mem |> x })
+push x = modify (\mem -> mem { stack = stack mem |> x })
 
 pop :: Monad m => Machine m Int
 pop = do xs <- stack <$> get
          case xs of
            Empty    -> emitError StackUnderflow
-           ys :|> y -> modify (\mem -> mem { stackPointer = stackPointer mem - 1, stack = ys }) $> y
+           ys :|> y -> modify (\mem -> mem { stack = ys }) $> y
 
 unOp :: Monad m => (Int -> Int) -> Machine m ()
 unOp op = pop >>= push . op >> increment
@@ -212,7 +212,7 @@ instArray :: [TAM] -> (Int, Array Int TAM)
 instArray is = let l = length is in (l, listArray (0, l-1) is)
 
 exec :: [TAM] -> IO (Either ExecError Stack)
-exec is = fmap stack <$> runExceptT (execStateT run (Memory 0 0 0 Seq.empty))
+exec is = fmap stack <$> runExceptT (execStateT run (Memory 0 0 Seq.empty))
   where
     jt  :: JumpTable
     ia  :: Array Int TAM
@@ -253,7 +253,7 @@ exec is = fmap stack <$> runExceptT (execStateT run (Memory 0 0 0 Seq.empty))
     step (LOAD  a)    = load  a
     step (STORE a)    = store a
 
-    step (CALL l)     = do lb <- stackPointer <$> get
+    step (CALL l)     = do lb <- Seq.length . stack <$> get
                            get >>= push .        localBase
                            get >>= push . (+1) . programCounter
                            modify (\mem -> mem { localBase = lb })
