@@ -190,10 +190,15 @@ store a = do x   <- pop
              let s = stack mem
                  i = case a of
                        SB d -> d
-                       LB d -> localBase mem + d
+                       LB d -> d + localBase mem
              if 0 <= i && i < Seq.length s
                then put (mem { stack = Seq.update i x s }) >> increment
                else emitError (InvalidAddress a)
+
+jump :: Monad m => String -> JumpTable -> Machine m ()
+jump l jt = case M.lookup l jt of
+              Nothing -> emitError (InvalidLabel l)
+              Just pc -> modify (\mem -> mem { programCounter = pc })
 
 getInt :: MonadIO m => Machine m Int
 getInt = do xs <- liftIO (putStr "GETINT> " >> hFlush stdout >> getLine)
@@ -246,28 +251,23 @@ exec is = fmap stack <$> runExceptT (execStateT run (Memory 0 0 Seq.empty))
     step  GTR         = binOp (\x y -> fromEnum (x >  y))
     step  GETINT      = getInt >>= push >> increment
     step  PUTINT      = pop >>= liftIO . print >> increment
-    step (JUMP l)     = case M.lookup l jt of
-                          Nothing -> emitError (InvalidLabel l)
-                          Just pc -> modify (\mem -> mem { programCounter = pc })
-    step (JUMPIFZ l)  = pop >>= \x -> if x == 0 then step (JUMP l) else increment
+    step (JUMP l)     = jump l jt
+    step (JUMPIFZ l)  = pop >>= \x -> if x == 0 then jump l jt else increment
     step (LOAD  a)    = load  a
     step (STORE a)    = store a
-
     step (CALL l)     = do lb <- Seq.length . stack <$> get
                            get >>= push .        localBase
                            get >>= push . (+1) . programCounter
                            modify (\mem -> mem { localBase = lb })
-                           step (JUMP l)
-
+                           jump l jt
     step (RETURN m n) = do xs <- Seq.replicateA m pop
                            ra <- pop
                            lb <- pop
                            replicateM_ n pop
                            mapM_ push (Seq.reverse xs)
                            modify (\mem -> mem { programCounter = ra, localBase = lb })
-
-    step (LABEL _)    = error "should be unreachable: step called on LABEL"
-    step  HALT        = error "should be unreachable: step called on HALT"
+    step (LABEL _)    = increment
+    step  HALT        = pure ()
 
 -- OPTIMISING TAM CODE
 
