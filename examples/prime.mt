@@ -15,7 +15,7 @@ begin
   while lower <= upper do
     begin
       i        := 3;
-      continue := 1;
+      continue := true;
       while continue && i*i <= lower do
         begin
           continue := i * (lower / i) != lower;

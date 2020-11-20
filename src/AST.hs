@@ -3,6 +3,7 @@ module AST
   Identifier(..),
   Program(..),
   Declaration(..),
+  TypeMT(..),
   Command(..),
   Expr(..),
   UnaryOp(..),
@@ -13,25 +14,28 @@ module AST
 where
 
 import SrcPos
+import Data.Char
 
 -- MT AST
 
 data Identifier  = Identifier SrcPos String
 data Program     = Program [Declaration] Command
-data Declaration = Initialise Identifier Expr
+data Declaration = Initialise Identifier TypeMT Expr
+data TypeMT      = IntegerMT | BooleanMT
 
-data Command     = Assign     Identifier Expr
+data Command     = Assign Identifier Expr
                  | If Expr Command Command
                  | While Expr Command
                  | GetInt Identifier
                  | PrintInt Expr
                  | Block [Command]
 
-data Expr        = Literal   Int
-                 | Variable  Identifier
-                 | UnaryOp   UnaryOp   Expr
-                 | BinaryOp  BinaryOp  Expr Expr
-                 | TernaryOp TernaryOp Expr Expr Expr
+data Expr        = LitInteger Int
+                 | LitBoolean Bool
+                 | Variable   Identifier
+                 | UnaryOp    UnaryOp   Expr
+                 | BinaryOp   BinaryOp  Expr Expr
+                 | TernaryOp  TernaryOp Expr Expr Expr
 
 data UnaryOp     = IntegerNegation
                  | BooleanNegation
@@ -98,6 +102,10 @@ showBinOp GreaterEqual   = ">="
 showTernOp :: TernaryOp -> String
 showTernOp Conditional = "?:"
 
+showTypeMT :: TypeMT -> String
+showTypeMT IntegerMT = "Integer"
+showTypeMT BooleanMT = "Boolean"
+
 astDisplay :: Program -> String
 astDisplay p = astDisplayProg id p ""
 
@@ -107,9 +115,10 @@ astDisplayProg p (Program ds c) = node "Program"
                                 . lastLine p . astDisplayComm (lastIndent p) c
 
 astDisplayDecl :: ShowS -> Declaration -> ShowS
-astDisplayDecl p (Initialise (Identifier _ i) e) = node "Initialise"
-                                                 . nextLine p . leaf i
-                                                 . lastLine p . astDisplayExpr (lastIndent p) e
+astDisplayDecl p (Initialise (Identifier _ i) t e) = node "Initialise"
+                                                   . nextLine p . leaf i
+                                                   . nextLine p . leaf (showTypeMT t)
+                                                   . lastLine p . astDisplayExpr (lastIndent p) e
 
 astDisplayComm :: ShowS -> Command -> ShowS
 astDisplayComm p (Assign (Identifier _ i) e) = node "Assign"
@@ -127,8 +136,9 @@ astDisplayComm p (PrintInt e)                = node "PrintInt" . sameLine . astD
 astDisplayComm p (Block cs)                  = node "Block" . astDisplayList 9 astDisplayComm p cs
 
 astDisplayExpr :: ShowS -> Expr -> ShowS
-astDisplayExpr _ (Literal n)                 = node "Literal"  . sameLine . leaf (show n)
-astDisplayExpr _ (Variable (Identifier _ i)) = node "Variable" . sameLine . leaf i
+astDisplayExpr _ (LitInteger n)              = node "LitInteger" . sameLine . leaf (show n)
+astDisplayExpr _ (LitBoolean b)              = node "LitBoolean" . sameLine . leaf (let c:cs = show b in toLower c : cs)
+astDisplayExpr _ (Variable (Identifier _ i)) = node "Variable"   . sameLine . leaf i
 astDisplayExpr p (UnaryOp op x)              = node "UnaryOp"
                                              . nextLine p . leaf (showUnOp op)
                                              . lastLine p . astDisplayExpr (lastIndent p) x

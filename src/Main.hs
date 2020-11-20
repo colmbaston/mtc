@@ -1,7 +1,7 @@
 module Main where
 
 import AST
-import ParserMT
+import Parser
 import CodeGen
 import TAM
 

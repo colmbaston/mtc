@@ -1,0 +1,36 @@
+  LOADL   0
+  LOADL   0
+  GETINT
+  STORE   [0]
+#0:
+  LOAD    [0]
+  LOADL   1
+  GTR
+  JUMPIFZ #1
+  LOAD    [0]
+  PUTINT
+  LOAD    [0]
+  LOADL   2
+  DIV
+  STORE   [1]
+  LOAD    [0]
+  LOADL   2
+  LOAD    [1]
+  MUL
+  EQL
+  JUMPIFZ #2
+  LOAD    [1]
+  STORE   [0]
+  JUMP    #0
+#2:
+  LOADL   3
+  LOAD    [0]
+  MUL
+  LOADL   1
+  ADD
+  STORE   [0]
+  JUMP    #0
+#1:
+  LOADL   1
+  PUTINT
+  HALT

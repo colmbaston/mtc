@@ -75,7 +75,7 @@ codeGenDecls :: Monad m => [Declaration] -> CodeGen m ()
 codeGenDecls = traverse_ codeGenDecl . zip [0..]
 
 codeGenDecl :: Monad m => (Address, Declaration) -> CodeGen m ()
-codeGenDecl (a, Initialise i e) = codeGenExpr e *> setAddress i a
+codeGenDecl (a, Initialise i _ e) = codeGenExpr e *> setAddress i a
 
 codeGenCommand :: Monad m => Command -> CodeGen m ()
 codeGenCommand (Assign i e) =    codeGenExpr e *> store i
@@ -99,7 +99,8 @@ codeGenCommand (PrintInt e) =    codeGenExpr e *> emitCode [PUTINT]
 codeGenCommand (Block cs)   =    traverse_ codeGenCommand cs
 
 codeGenExpr :: Monad m => Expr -> CodeGen m ()
-codeGenExpr (Literal   n)                 =    emitCode [LOADL n]
+codeGenExpr (LitInteger n)                =    emitCode [LOADL n]
+codeGenExpr (LitBoolean b)                =    emitCode [LOADL (fromEnum b)]
 codeGenExpr (Variable  i)                 =    load i
 codeGenExpr (UnaryOp   op x)              =    codeGenExpr x *>                  codeGenUnOp  op
 codeGenExpr (BinaryOp  op x y)            =    codeGenExpr x *> codeGenExpr y *> codeGenBinOp op

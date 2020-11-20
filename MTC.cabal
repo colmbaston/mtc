@@ -14,8 +14,8 @@ executable mtc
   other-modules:       SrcPos,
                        ParserLib,
                        AST,
-                       LexerMT,
-                       ParserMT,
+                       Lexer,
+                       Parser,
                        CodeGen,
                        TAM
   build-depends:       base         ^>= 4.14,
