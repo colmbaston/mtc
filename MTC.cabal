@@ -16,6 +16,7 @@ executable mtc
                        AST,
                        Lexer,
                        Parser,
+                       TypeCheck,
                        CodeGen,
                        TAM
   build-depends:       base         ^>= 4.14,

@@ -5,7 +5,6 @@ import TAM
 
 import           Data.Map (Map)
 import qualified Data.Map as M
-import           Data.Foldable
 import           Data.Bifunctor
 
 import Control.Monad.Trans.Class
@@ -13,15 +12,10 @@ import Control.Monad.Trans.State
 import Control.Monad.Trans.Writer
 import Control.Monad.Trans.Except
 
-data CodeGenError = CodeGenError Identifier ErrorDetails
-data ErrorDetails = Undeclared | Multiple
+data CodeGenError = CodeGenError
 
 instance Show CodeGenError where
-  showsPrec _ (CodeGenError (Identifier sp v) d) = showString "code generation error at "  . shows sp
-                                                 . showString ": variable " . showString v . showString " is "
-                                                 . showString (case d of
-                                                                 Undeclared -> "undeclared"
-                                                                 Multiple   -> "declared multiple times")
+  show CodeGenError = "code generation error: this indicates that an error was missed by the type-checker"
 
 newtype DList a = DList { runDList :: [a] -> [a] }
 
@@ -39,29 +33,29 @@ type CodeGen m   = WriterT (DList TAM) (StateT (Int, Environment) (ExceptT CodeG
 emitCode :: Monad m => [TAM] -> CodeGen m ()
 emitCode is = tell (DList (is ++))
 
-emitError :: Monad m => CodeGenError -> CodeGen m a
-emitError = lift . lift . throwE
+emitError :: Monad m =>  CodeGen m a
+emitError = lift (lift (throwE CodeGenError))
 
 freshLabel :: Monad m => CodeGen m Label
 freshLabel = lift (state (\(l, m) -> (show l, (l+1, m))))
 
-setAddress :: Monad m => Identifier -> Address -> CodeGen m ()
-setAddress i@(Identifier _ v) a = do env <- snd <$> lift get
-                                     case M.insertLookupWithKey (\_ x _ -> x) v a env of
-                                       (Nothing, env') -> lift (modify (second (const env')))
-                                       (Just  _,    _) -> emitError (CodeGenError i Multiple)
+setAddress :: Monad m => String -> Address -> CodeGen m ()
+setAddress v a = do env <- snd <$> lift get
+                    case M.insertLookupWithKey (\_ x _ -> x) v a env of
+                      (Nothing, env') -> lift (modify (second (const env')))
+                      (Just  _,    _) -> emitError
 
-getAddress :: Monad m => Identifier -> CodeGen m Address
-getAddress i@(Identifier _ v) = do env <- snd <$> lift get
-                                   case M.lookup v env of
-                                     Nothing -> emitError (CodeGenError i Undeclared)
-                                     Just  a -> pure a
+getAddress :: Monad m => String -> CodeGen m Address
+getAddress v = do env <- snd <$> lift get
+                  case M.lookup v env of
+                    Nothing -> emitError
+                    Just  a -> pure a
 
-load :: Monad m => Identifier -> CodeGen m ()
-load i = getAddress i >>= emitCode . pure . LOAD
+load :: Monad m => String -> CodeGen m ()
+load v = getAddress v >>= emitCode . pure . LOAD
 
-store :: Monad m => Identifier -> CodeGen m ()
-store i = getAddress i >>= emitCode . pure . STORE
+store :: Monad m => String -> CodeGen m ()
+store v = getAddress v >>= emitCode . pure . STORE
 
 -- CODE GENERATOR
 
@@ -72,7 +66,7 @@ codeGenProg :: Monad m => Program -> CodeGen m ()
 codeGenProg (Program ds c) = codeGenDecls ds *> codeGenCommand c *> emitCode [HALT]
 
 codeGenDecls :: Monad m => [Declaration] -> CodeGen m ()
-codeGenDecls = traverse_ codeGenDecl . zip [0..]
+codeGenDecls = mapM_ codeGenDecl . zip [0..]
 
 codeGenDecl :: Monad m => (Address, Declaration) -> CodeGen m ()
 codeGenDecl (a, Initialise i _ e) = codeGenExpr e *> setAddress i a
@@ -96,7 +90,7 @@ codeGenCommand (While e t)  = do l1 <- freshLabel
                                  emitCode [JUMP l1, LABEL l2]
 codeGenCommand (GetInt i)   =    emitCode [GETINT] *> store i
 codeGenCommand (PrintInt e) =    codeGenExpr e *> emitCode [PUTINT]
-codeGenCommand (Block cs)   =    traverse_ codeGenCommand cs
+codeGenCommand (Block cs)   =    mapM_ codeGenCommand cs
 
 codeGenExpr :: Monad m => Expr -> CodeGen m ()
 codeGenExpr (LitInteger n)                =    emitCode [LOADL n]

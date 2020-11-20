@@ -62,10 +62,10 @@ commands = (:) <$> command
                         Just TkSemicolon -> nextToken *> commands
                         _                -> pure []
 
-identifier :: Parser Token Identifier
+identifier :: Parser Token String
 identifier = do tk <- peekToken
                 case tk of
-                  Just (TkIdent i) -> Identifier <$> srcPos <*> (nextToken $> i)
+                  Just (TkIdent i) -> nextToken $> i
                   _                -> empty <?> "expected an identifier"
 
 -- EXPRESSION PARSER
@@ -77,33 +77,33 @@ condExpr :: Parser Token Expr
 condExpr = do x  <- disjExpr
               tk <- peekToken
               case tk of
-                Just TkQuestion -> TernaryOp Conditional x <$> (nextToken *> disjExpr) <*> (token TkColon <?> "expected token \":\"" *> disjExpr)
+                Just TkQuestion -> nextToken *> (TernaryOp Conditional x <$> disjExpr) <*> (token TkColon <?> "expected token \":\"" *> disjExpr)
                 _               -> pure x
 
 disjExpr :: Parser Token Expr
 disjExpr = do x <- conjExpr
               tk <- peekToken
               case tk of
-                Just TkDisjunction -> BinaryOp Disjunction x <$> (nextToken *> disjExpr)
+                Just TkDisjunction -> nextToken *> (BinaryOp Disjunction x <$> disjExpr)
                 _                  -> pure x
 
 conjExpr :: Parser Token Expr
 conjExpr = do x <- relExpr
               tk <- peekToken
               case tk of
-                Just TkConjunction -> BinaryOp Conjunction x <$> (nextToken *> conjExpr)
+                Just TkConjunction -> nextToken *> (BinaryOp Conjunction x <$> conjExpr)
                 _                  -> pure x
 
 relExpr :: Parser Token Expr
 relExpr = do x  <- addExpr
              tk <- peekToken
              case tk of
-               Just TkEqual        -> BinaryOp Equal        x <$> (nextToken *> addExpr)
-               Just TkNotEqual     -> BinaryOp NotEqual     x <$> (nextToken *> addExpr)
-               Just TkLess         -> BinaryOp Less         x <$> (nextToken *> addExpr)
-               Just TkLessEqual    -> BinaryOp LessEqual    x <$> (nextToken *> addExpr)
-               Just TkGreater      -> BinaryOp Greater      x <$> (nextToken *> addExpr)
-               Just TkGreaterEqual -> BinaryOp GreaterEqual x <$> (nextToken *> addExpr)
+               Just TkEqual        -> nextToken *> (BinaryOp Equal        x <$> addExpr)
+               Just TkNotEqual     -> nextToken *> (BinaryOp NotEqual     x <$> addExpr)
+               Just TkLess         -> nextToken *> (BinaryOp Less         x <$> addExpr)
+               Just TkLessEqual    -> nextToken *> (BinaryOp LessEqual    x <$> addExpr)
+               Just TkGreater      -> nextToken *> (BinaryOp Greater      x <$> addExpr)
+               Just TkGreaterEqual -> nextToken *> (BinaryOp GreaterEqual x <$> addExpr)
                _                   -> pure x
 
 addExpr :: Parser Token Expr
@@ -131,10 +131,10 @@ mulExpr = go id
 atomExpr :: Parser Token Expr
 atomExpr = do tk <- peekToken
               case tk of
-                Just (TkLitInteger n) -> LitInteger <$> (nextToken $> n)
-                Just (TkLitBoolean b) -> LitBoolean <$> (nextToken $> b)
-                Just (TkIdent      i) -> Variable <$> (Identifier <$> srcPos <*> (nextToken $> i))
+                Just (TkLitInteger n) -> nextToken $> LitInteger n
+                Just (TkLitBoolean b) -> nextToken $> LitBoolean b
+                Just (TkIdent      v) -> nextToken $> Variable   v
                 Just  TkLeftPar       -> parens expr
-                Just  TkSubtraction   -> UnaryOp IntegerNegation  <$> (nextToken *> atomExpr)
-                Just  TkExclamation   -> UnaryOp BooleanNegation  <$> (nextToken *> atomExpr)
+                Just  TkSubtraction   -> nextToken *> (UnaryOp IntegerNegation <$> atomExpr)
+                Just  TkExclamation   -> nextToken *> (UnaryOp BooleanNegation <$> atomExpr)
                 _                     -> empty <?> "expected an expression"

@@ -1,6 +1,5 @@
 module AST
 (
-  Identifier(..),
   Program(..),
   Declaration(..),
   TypeMT(..),
@@ -13,26 +12,24 @@ module AST
 )
 where
 
-import SrcPos
 import Data.Char
 
 -- MT AST
 
-data Identifier  = Identifier SrcPos String
 data Program     = Program [Declaration] Command
-data Declaration = Initialise Identifier TypeMT Expr
-data TypeMT      = IntegerMT | BooleanMT
+data Declaration = Initialise String TypeMT Expr
+data TypeMT      = IntegerMT | BooleanMT deriving Eq
 
-data Command     = Assign Identifier Expr
+data Command     = Assign String Expr
                  | If Expr Command Command
                  | While Expr Command
-                 | GetInt Identifier
+                 | GetInt String
                  | PrintInt Expr
                  | Block [Command]
 
 data Expr        = LitInteger Int
                  | LitBoolean Bool
-                 | Variable   Identifier
+                 | Variable   String
                  | UnaryOp    UnaryOp   Expr
                  | BinaryOp   BinaryOp  Expr Expr
                  | TernaryOp  TernaryOp Expr Expr Expr
@@ -81,30 +78,30 @@ node s = showString "\ESC[1;38;2;255;128;0m" . showString s . showString "\ESC[0
 leaf :: String -> ShowS
 leaf s = showString "\ESC[1;36m" . showString s . showString "\ESC[0m"
 
-showUnOp :: UnaryOp -> String
-showUnOp IntegerNegation = "-"
-showUnOp BooleanNegation = "!"
+instance Show UnaryOp where
+  show IntegerNegation = "-"
+  show BooleanNegation = "!"
 
-showBinOp :: BinaryOp -> String
-showBinOp Addition       = "+"
-showBinOp Subtraction    = "-"
-showBinOp Multiplication = "*"
-showBinOp Division       = "/"
-showBinOp Conjunction    = "&&"
-showBinOp Disjunction    = "||"
-showBinOp Equal          = "=="
-showBinOp NotEqual       = "!="
-showBinOp Less           = "<"
-showBinOp LessEqual      = "<="
-showBinOp Greater        = ">"
-showBinOp GreaterEqual   = ">="
+instance Show BinaryOp where
+  show Addition       = "+"
+  show Subtraction    = "-"
+  show Multiplication = "*"
+  show Division       = "/"
+  show Conjunction    = "&&"
+  show Disjunction    = "||"
+  show Equal          = "=="
+  show NotEqual       = "!="
+  show Less           = "<"
+  show LessEqual      = "<="
+  show Greater        = ">"
+  show GreaterEqual   = ">="
 
-showTernOp :: TernaryOp -> String
-showTernOp Conditional = "?:"
+instance Show TernaryOp where
+  show Conditional = "?:"
 
-showTypeMT :: TypeMT -> String
-showTypeMT IntegerMT = "Integer"
-showTypeMT BooleanMT = "Boolean"
+instance Show TypeMT where
+  show IntegerMT = "Integer"
+  show BooleanMT = "Boolean"
 
 astDisplay :: Program -> String
 astDisplay p = astDisplayProg id p ""
@@ -115,42 +112,42 @@ astDisplayProg p (Program ds c) = node "Program"
                                 . lastLine p . astDisplayComm (lastIndent p) c
 
 astDisplayDecl :: ShowS -> Declaration -> ShowS
-astDisplayDecl p (Initialise (Identifier _ i) t e) = node "Initialise"
-                                                   . nextLine p . leaf i
-                                                   . nextLine p . leaf (showTypeMT t)
-                                                   . lastLine p . astDisplayExpr (lastIndent p) e
+astDisplayDecl p (Initialise v t e) = node "Initialise"
+                                    . nextLine p . leaf v
+                                    . nextLine p . leaf (show t)
+                                    . lastLine p . astDisplayExpr (lastIndent p) e
 
 astDisplayComm :: ShowS -> Command -> ShowS
-astDisplayComm p (Assign (Identifier _ i) e) = node "Assign"
-                                             . nextLine p . leaf i
-                                             . lastLine p . astDisplayExpr (lastIndent p) e
-astDisplayComm p (If e t f)                  = node "If"
-                                             . nextLine p . astDisplayExpr (nextIndent p) e
-                                             . nextLine p . astDisplayComm (nextIndent p) t
-                                             . lastLine p . astDisplayComm (lastIndent p) f
-astDisplayComm p (While e c)                 = node "While"
-                                             . nextLine p . astDisplayExpr (nextIndent p) e
-                                             . lastLine p . astDisplayComm (lastIndent p) c
-astDisplayComm _ (GetInt (Identifier _ i))   = node "GetInt"   . sameLine . leaf i
-astDisplayComm p (PrintInt e)                = node "PrintInt" . sameLine . astDisplayExpr (sameIndent 12 p) e
-astDisplayComm p (Block cs)                  = node "Block" . astDisplayList 9 astDisplayComm p cs
+astDisplayComm p (Assign v e) = node "Assign"
+                              . nextLine p . leaf v
+                              . lastLine p . astDisplayExpr (lastIndent p) e
+astDisplayComm p (If e t f)   = node "If"
+                              . nextLine p . astDisplayExpr (nextIndent p) e
+                              . nextLine p . astDisplayComm (nextIndent p) t
+                              . lastLine p . astDisplayComm (lastIndent p) f
+astDisplayComm p (While e c)  = node "While"
+                              . nextLine p . astDisplayExpr (nextIndent p) e
+                              . lastLine p . astDisplayComm (lastIndent p) c
+astDisplayComm _ (GetInt v)   = node "GetInt"   . sameLine . leaf v
+astDisplayComm p (PrintInt e) = node "PrintInt" . sameLine . astDisplayExpr (sameIndent 12 p) e
+astDisplayComm p (Block cs)   = node "Block"    . astDisplayList 9 astDisplayComm p cs
 
 astDisplayExpr :: ShowS -> Expr -> ShowS
-astDisplayExpr _ (LitInteger n)              = node "LitInteger" . sameLine . leaf (show n)
-astDisplayExpr _ (LitBoolean b)              = node "LitBoolean" . sameLine . leaf (let c:cs = show b in toLower c : cs)
-astDisplayExpr _ (Variable (Identifier _ i)) = node "Variable"   . sameLine . leaf i
-astDisplayExpr p (UnaryOp op x)              = node "UnaryOp"
-                                             . nextLine p . leaf (showUnOp op)
-                                             . lastLine p . astDisplayExpr (lastIndent p) x
-astDisplayExpr p (BinaryOp op x y)           = node "BinaryOp"
-                                             . nextLine p . leaf (showBinOp op)
-                                             . nextLine p . astDisplayExpr (nextIndent p) x
-                                             . lastLine p . astDisplayExpr (lastIndent p) y
-astDisplayExpr p (TernaryOp op x y z)        = node "TernaryOp"
-                                             . nextLine p . leaf (showTernOp op)
-                                             . nextLine p . astDisplayExpr (nextIndent p) x
-                                             . nextLine p . astDisplayExpr (nextIndent p) y
-                                             . lastLine p . astDisplayExpr (lastIndent p) z
+astDisplayExpr _ (LitInteger n)       = node "LitInteger" . sameLine . leaf (show n)
+astDisplayExpr _ (LitBoolean b)       = node "LitBoolean" . sameLine . leaf (let c:cs = show b in toLower c : cs)
+astDisplayExpr _ (Variable v)         = node "Variable"   . sameLine . leaf v
+astDisplayExpr p (UnaryOp op x)       = node "UnaryOp"
+                                      . nextLine p . leaf (show op)
+                                      . lastLine p . astDisplayExpr (lastIndent p) x
+astDisplayExpr p (BinaryOp op x y)    = node "BinaryOp"
+                                      . nextLine p . leaf (show op)
+                                      . nextLine p . astDisplayExpr (nextIndent p) x
+                                      . lastLine p . astDisplayExpr (lastIndent p) y
+astDisplayExpr p (TernaryOp op x y z) = node "TernaryOp"
+                                      . nextLine p . leaf (show op)
+                                      . nextLine p . astDisplayExpr (nextIndent p) x
+                                      . nextLine p . astDisplayExpr (nextIndent p) y
+                                      . lastLine p . astDisplayExpr (lastIndent p) z
 
 astDisplayList :: Int -> (ShowS -> a -> ShowS) -> ShowS -> [a] -> ShowS
 astDisplayList i f p [x] = sameLine . f (sameIndent i p) x

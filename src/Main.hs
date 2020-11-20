@@ -2,6 +2,7 @@ module Main where
 
 import AST
 import Parser
+import TypeCheck
 import CodeGen
 import TAM
 
@@ -79,9 +80,11 @@ readMT file = do src <- readFileChecked file
                    Right p -> pure p
 
 compileMT :: Program -> IO [TAM]
-compileMT p = case optimiseTAM <$> codeGen p of
+compileMT p = case typeCheck p of
                 Left   e -> print e *> exitFailure
-                Right is -> pure is
+                Right () -> case optimiseTAM <$> codeGen p of
+                              Left   e -> print e *> exitFailure
+                              Right is -> pure is
 
 readTAM :: FilePath -> IO [TAM]
 readTAM file = do src <- readFileChecked file
