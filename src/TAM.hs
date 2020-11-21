@@ -23,7 +23,7 @@ import Control.Monad.Trans.Except
 
 data Address  = SB Int
               | LB Int
-              deriving Eq
+              deriving (Eq, Show)
 
 data TAM      = LOADL Int
               | ADD
@@ -87,46 +87,40 @@ formatAddr a = "[" ++ r ++ (if d >= 0 then "+" else "") ++ show d ++ "]"
 -- PARSING TAM CODE
 
 parseTAM :: String -> Either ParseError [TAM]
-parseTAM = fmap fst . parse ((trim code <* token '\ETX' <* etx) <?> "unrecognised TAM instruction") . annotate
+parseTAM = fmap fst . parse ((many space *> code <* many space <* token '\ETX' <* etx) <?> "unrecognised TAM instruction") . annotate
 
 code :: Parser Char [TAM]
 code = (:) <$> inst <*> (many inlineSpace *> token '\n' *> many space *> code) <|> pure []
 
 inst :: Parser Char TAM
-inst =  (tokens "LOADL"   $> LOADL) <*> (some inlineSpace *> integer)
-    <|> (tokens "ADD"     $> ADD)
-    <|> (tokens "SUB"     $> SUB)
-    <|> (tokens "MUL"     $> MUL)
-    <|> (tokens "DIV"     $> DIV)
-    <|> (tokens "NEG"     $> NEG)
-    <|> (tokens "AND"     $> AND)
-    <|> (tokens "OR"      $> OR )
-    <|> (tokens "NOT"     $> NOT)
-    <|> (tokens "EQL"     $> EQL)
-    <|> (tokens "LSS"     $> LSS)
-    <|> (tokens "GTR"     $> GTR)
-    <|> (tokens "GETINT"  $> GETINT)
-    <|> (tokens "PUTINT"  $> PUTINT)
-    <|> (LABEL <$> label <*  token ':')
-    <|> (tokens "JUMP"    $> JUMP)    <*> (some inlineSpace *> label)
-    <|> (tokens "JUMPIFZ" $> JUMPIFZ) <*> (some inlineSpace *> label)
-    <|> (tokens "LOAD"    $> LOAD)    <*> (some inlineSpace *> address)
-    <|> (tokens "STORE"   $> STORE)   <*> (some inlineSpace *> address)
-    <|> (tokens "CALL"    $> CALL)    <*> (some inlineSpace *> label)
-    <|> (tokens "RETURN"  $> RETURN)  <*> (some inlineSpace *> natural) <*> (some inlineSpace *> natural)
-    <|> (tokens "HALT"    $> HALT)
+inst =  (LOADL   <$  tokens "LOADL")   <*> (some inlineSpace *> integer)
+    <|> (ADD     <$  tokens "ADD")
+    <|> (SUB     <$  tokens "SUB")
+    <|> (MUL     <$  tokens "MUL")
+    <|> (DIV     <$  tokens "DIV")
+    <|> (NEG     <$  tokens "NEG")
+    <|> (AND     <$  tokens "AND")
+    <|> (OR      <$  tokens "OR")
+    <|> (NOT     <$  tokens "NOT")
+    <|> (EQL     <$  tokens "EQL")
+    <|> (LSS     <$  tokens "LSS")
+    <|> (GTR     <$  tokens "GTR")
+    <|> (GETINT  <$  tokens "GETINT")
+    <|> (PUTINT  <$  tokens "PUTINT")
+    <|> (LABEL   <$> label <* token ':')
+    <|> (JUMP    <$  tokens "JUMP")    <*> (some inlineSpace *> label)
+    <|> (JUMPIFZ <$  tokens "JUMPIFZ") <*> (some inlineSpace *> label)
+    <|> (LOAD    <$  tokens "LOAD")    <*> (some inlineSpace *> address)
+    <|> (STORE   <$  tokens "STORE")   <*> (some inlineSpace *> address)
+    <|> (CALL    <$  tokens "CALL")    <*> (some inlineSpace *> label)
+    <|> (RETURN  <$  tokens "RETURN")  <*> (some inlineSpace *> natural) <*> (some inlineSpace *> natural)
+    <|> (HALT    <$  tokens "HALT")
 
 address :: Parser Char Address
-address = do _ <- token '['
-             _ <- many inlineSpace
-             c <- tokens "SB" $> SB <|> tokens "LB" $> LB
-             _ <- many inlineSpace
-             s <- token '+' $> id <|> token '-' $> negate
-             _ <- many inlineSpace
-             n <- natural
-             _ <- many inlineSpace
-             _ <- token ']'
-             pure (c (s n))
+address = token '[' *> many inlineSpace *> register <*> (many inlineSpace *> sign <*> (many inlineSpace *> natural)) <* many inlineSpace <* token ']'
+
+register :: Parser Char (Int -> Address)
+register = tokens "SB" $> SB <|> tokens "LB" $> LB
 
 label :: Parser Char String
 label = token '#' *> some (sat nextToken isAlphaNum)
@@ -202,7 +196,7 @@ jump l jt = case M.lookup l jt of
 
 getInt :: MonadIO m => Machine m Int
 getInt = do xs <- liftIO (putStr "GETINT> " >> hFlush stdout >> getLine)
-            case fst <$> parse (trim integer <* token '\ETX' <* etx) (annotate xs) of
+            case fst <$> parse (many space *> integer <* many space <* token '\ETX' <* etx) (annotate xs) of
               Left  _ -> liftIO (putStrLn "could not parse as integer") >> getInt
               Right n -> pure n
 

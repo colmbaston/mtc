@@ -15,9 +15,9 @@ module ParserLib
   tokens,
   space,
   inlineSpace,
-  trim,
   natural,
-  integer
+  integer,
+  sign
 )
 where
 
@@ -122,13 +122,13 @@ space :: Parser Char Char
 space = sat nextToken isSpace
 
 inlineSpace :: Parser Char Char
-inlineSpace = sat nextToken (\t -> isSpace t && t /= '\n')
-
-trim :: Parser Char a -> Parser Char a
-trim px = many space *> px <* many space
+inlineSpace = sat space (/= '\n')
 
 natural :: Parser Char Int
 natural = read <$> some (sat nextToken isDigit)
 
 integer :: Parser Char Int
-integer = ((token '-' $> negate) <|> pure id) <*> natural
+integer = (sign <|> pure id) <*> natural
+
+sign :: Parser Char (Int -> Int)
+sign = token '+' $> id <|> token '-' $> negate
