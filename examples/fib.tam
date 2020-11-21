@@ -1,0 +1,30 @@
+  GETINT
+  CALL #fib
+  PUTINT
+  HALT
+#fib:
+  LOAD [LB-1]
+  LOADL 1
+  GTR
+  JUMPIFZ #a
+  LOAD [LB-1]
+  LOADL 1
+  SUB
+  CALL #fib
+  LOAD [LB-1]
+  LOADL 2
+  SUB
+  CALL #fib
+  ADD
+  JUMP #b
+#a:
+  LOAD [LB-1]
+  LOADL 1
+  EQL
+  JUMPIFZ #c
+  LOADL 1
+  JUMP #b
+#c:
+  LOADL 0
+#b:
+  RETURN 1 1

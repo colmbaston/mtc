@@ -14,6 +14,7 @@ module ParserLib
   token,
   tokens,
   space,
+  inlineSpace,
   trim,
   natural,
   integer
@@ -119,6 +120,9 @@ tokens = traverse token
 
 space :: Parser Char Char
 space = sat nextToken isSpace
+
+inlineSpace :: Parser Char Char
+inlineSpace = sat nextToken (\t -> isSpace t && t /= '\n')
 
 trim :: Parser Char a -> Parser Char a
 trim px = many space *> px <* many space

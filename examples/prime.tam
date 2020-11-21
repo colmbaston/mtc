@@ -3,35 +3,35 @@
   LOADL   0
   LOADL   0
   GETINT
-  STORE   [0]
+  STORE   [SB+0]
   GETINT
-  STORE   [1]
-  LOAD    [0]
+  STORE   [SB+1]
+  LOAD    [SB+0]
   LOADL   2
   LSS
   JUMPIFZ #0
   LOADL   2
   JUMP    #1
 #0:
-  LOAD    [0]
+  LOAD    [SB+0]
 #1:
-  STORE   [0]
-  LOAD    [1]
+  STORE   [SB+0]
+  LOAD    [SB+1]
   LOADL   0
   LSS
   JUMPIFZ #2
   LOADL   0
   JUMP    #3
 #2:
-  LOAD    [1]
+  LOAD    [SB+1]
 #3:
-  STORE   [1]
-  LOAD    [0]
+  STORE   [SB+1]
+  LOAD    [SB+0]
   LOADL   2
   GTR
   NOT
   LOADL   2
-  LOAD    [1]
+  LOAD    [SB+1]
   GTR
   NOT
   AND
@@ -39,61 +39,61 @@
   LOADL   2
   PUTINT
   LOADL   3
-  STORE   [0]
+  STORE   [SB+0]
   JUMP    #6
 #4:
   LOADL   2
-  LOAD    [0]
+  LOAD    [SB+0]
   LOADL   2
   DIV
   MUL
   LOADL   1
   ADD
-  STORE   [0]
+  STORE   [SB+0]
 #6:
-  LOAD    [0]
-  LOAD    [1]
+  LOAD    [SB+0]
+  LOAD    [SB+1]
   GTR
   NOT
   JUMPIFZ #7
   LOADL   3
-  STORE   [2]
+  STORE   [SB+2]
   LOADL   1
-  STORE   [3]
+  STORE   [SB+3]
 #8:
-  LOAD    [3]
-  LOAD    [2]
-  LOAD    [2]
+  LOAD    [SB+3]
+  LOAD    [SB+2]
+  LOAD    [SB+2]
   MUL
-  LOAD    [0]
+  LOAD    [SB+0]
   GTR
   NOT
   AND
   JUMPIFZ #9
-  LOAD    [2]
-  LOAD    [0]
-  LOAD    [2]
+  LOAD    [SB+2]
+  LOAD    [SB+0]
+  LOAD    [SB+2]
   DIV
   MUL
-  LOAD    [0]
+  LOAD    [SB+0]
   EQL
   NOT
-  STORE   [3]
-  LOAD    [2]
+  STORE   [SB+3]
+  LOAD    [SB+2]
   LOADL   2
   ADD
-  STORE   [2]
+  STORE   [SB+2]
   JUMP    #8
 #9:
-  LOAD    [3]
+  LOAD    [SB+3]
   JUMPIFZ #11
-  LOAD    [0]
+  LOAD    [SB+0]
   PUTINT
 #11:
-  LOAD    [0]
+  LOAD    [SB+0]
   LOADL   2
   ADD
-  STORE   [0]
+  STORE   [SB+0]
   JUMP    #6
 #7:
   HALT
