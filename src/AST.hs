@@ -12,27 +12,28 @@ module AST
 )
 where
 
+import SrcPos
 import Data.Char
 
 -- MT AST
 
 data Program     = Program [Declaration] Command
-data Declaration = Initialise String TypeMT Expr
+data Declaration = Initialise SrcPos String TypeMT Expr
 data TypeMT      = IntegerMT | BooleanMT deriving Eq
 
-data Command     = Assign String Expr
+data Command     = Assign SrcPos String Expr
                  | If Expr Command Command
                  | While Expr Command
-                 | GetInt String
+                 | GetInt SrcPos String
                  | PrintInt Expr
                  | Block [Command]
 
-data Expr        = LitInteger Int
-                 | LitBoolean Bool
-                 | Variable   String
-                 | UnaryOp    UnaryOp   Expr
-                 | BinaryOp   BinaryOp  Expr Expr
-                 | TernaryOp  TernaryOp Expr Expr Expr
+data Expr        = LitInteger SrcPos Int
+                 | LitBoolean SrcPos Bool
+                 | Variable   SrcPos String
+                 | UnaryOp    SrcPos UnaryOp   Expr
+                 | BinaryOp   SrcPos BinaryOp  Expr Expr
+                 | TernaryOp  SrcPos TernaryOp Expr Expr Expr
 
 data UnaryOp     = IntegerNegation
                  | BooleanNegation
@@ -112,42 +113,42 @@ astDisplayProg p (Program ds c) = node "Program"
                                 . lastLine p . astDisplayComm (lastIndent p) c
 
 astDisplayDecl :: ShowS -> Declaration -> ShowS
-astDisplayDecl p (Initialise v t e) = node "Initialise"
-                                    . nextLine p . leaf v
-                                    . nextLine p . leaf (show t)
-                                    . lastLine p . astDisplayExpr (lastIndent p) e
+astDisplayDecl p (Initialise _ v t e) = node "Initialise"
+                                      . nextLine p . leaf v
+                                      . nextLine p . leaf (show t)
+                                      . lastLine p . astDisplayExpr (lastIndent p) e
 
 astDisplayComm :: ShowS -> Command -> ShowS
-astDisplayComm p (Assign v e) = node "Assign"
-                              . nextLine p . leaf v
-                              . lastLine p . astDisplayExpr (lastIndent p) e
-astDisplayComm p (If e t f)   = node "If"
-                              . nextLine p . astDisplayExpr (nextIndent p) e
-                              . nextLine p . astDisplayComm (nextIndent p) t
-                              . lastLine p . astDisplayComm (lastIndent p) f
-astDisplayComm p (While e c)  = node "While"
-                              . nextLine p . astDisplayExpr (nextIndent p) e
-                              . lastLine p . astDisplayComm (lastIndent p) c
-astDisplayComm _ (GetInt v)   = node "GetInt"   . sameLine . leaf v
-astDisplayComm p (PrintInt e) = node "PrintInt" . sameLine . astDisplayExpr (sameIndent 12 p) e
-astDisplayComm p (Block cs)   = node "Block"    . astDisplayList 9 astDisplayComm p cs
+astDisplayComm p (Assign _ v e) = node "Assign"
+                                . nextLine p . leaf v
+                                . lastLine p . astDisplayExpr (lastIndent p) e
+astDisplayComm p (If e t f)     = node "If"
+                                . nextLine p . astDisplayExpr (nextIndent p) e
+                                . nextLine p . astDisplayComm (nextIndent p) t
+                                . lastLine p . astDisplayComm (lastIndent p) f
+astDisplayComm p (While e c)    = node "While"
+                                . nextLine p . astDisplayExpr (nextIndent p) e
+                                . lastLine p . astDisplayComm (lastIndent p) c
+astDisplayComm _ (GetInt _ v)   = node "GetInt"   . sameLine . leaf v
+astDisplayComm p (PrintInt e)   = node "PrintInt" . sameLine . astDisplayExpr (sameIndent 12 p) e
+astDisplayComm p (Block cs)     = node "Block"    . astDisplayList 9 astDisplayComm p cs
 
 astDisplayExpr :: ShowS -> Expr -> ShowS
-astDisplayExpr _ (LitInteger n)       = node "LitInteger" . sameLine . leaf (show n)
-astDisplayExpr _ (LitBoolean b)       = node "LitBoolean" . sameLine . leaf (let c:cs = show b in toLower c : cs)
-astDisplayExpr _ (Variable v)         = node "Variable"   . sameLine . leaf v
-astDisplayExpr p (UnaryOp op x)       = node "UnaryOp"
-                                      . nextLine p . leaf (show op)
-                                      . lastLine p . astDisplayExpr (lastIndent p) x
-astDisplayExpr p (BinaryOp op x y)    = node "BinaryOp"
-                                      . nextLine p . leaf (show op)
-                                      . nextLine p . astDisplayExpr (nextIndent p) x
-                                      . lastLine p . astDisplayExpr (lastIndent p) y
-astDisplayExpr p (TernaryOp op x y z) = node "TernaryOp"
-                                      . nextLine p . leaf (show op)
-                                      . nextLine p . astDisplayExpr (nextIndent p) x
-                                      . nextLine p . astDisplayExpr (nextIndent p) y
-                                      . lastLine p . astDisplayExpr (lastIndent p) z
+astDisplayExpr _ (LitInteger _ n)        = node "LitInteger" . sameLine . leaf (show n)
+astDisplayExpr _ (LitBoolean _ b)        = node "LitBoolean" . sameLine . leaf (let c:cs = show b in toLower c : cs)
+astDisplayExpr _ (Variable   _ v)        = node "Variable"   . sameLine . leaf v
+astDisplayExpr p (UnaryOp    _ op x)     = node "UnaryOp"
+                                         . nextLine p . leaf (show op)
+                                         . lastLine p . astDisplayExpr (lastIndent p) x
+astDisplayExpr p (BinaryOp   _ op x y)   = node "BinaryOp"
+                                         . nextLine p . leaf (show op)
+                                         . nextLine p . astDisplayExpr (nextIndent p) x
+                                         . lastLine p . astDisplayExpr (lastIndent p) y
+astDisplayExpr p (TernaryOp  _ op x y z) = node "TernaryOp"
+                                         . nextLine p . leaf (show op)
+                                         . nextLine p . astDisplayExpr (nextIndent p) x
+                                         . nextLine p . astDisplayExpr (nextIndent p) y
+                                         . lastLine p . astDisplayExpr (lastIndent p) z
 
 astDisplayList :: Int -> (ShowS -> a -> ShowS) -> ShowS -> [a] -> ShowS
 astDisplayList i f p [x] = sameLine . f (sameIndent i p) x

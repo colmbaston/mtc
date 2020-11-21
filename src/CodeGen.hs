@@ -40,16 +40,11 @@ freshLabel :: Monad m => CodeGen m Label
 freshLabel = lift (state (\(l, m) -> (show l, (l+1, m))))
 
 setAddress :: Monad m => String -> Address -> CodeGen m ()
-setAddress v a = do env <- snd <$> lift get
-                    case M.insertLookupWithKey (\_ x _ -> x) v a env of
-                      (Nothing, env') -> lift (modify (second (const env')))
-                      (Just  _,    _) -> emitError
+setAddress v a = do (m, env) <- M.insertLookupWithKey (\_ x _ -> x) v a . snd <$> lift get
+                    maybe (lift (modify (second (const env)))) (const emitError) m
 
 getAddress :: Monad m => String -> CodeGen m Address
-getAddress v = do env <- snd <$> lift get
-                  case M.lookup v env of
-                    Nothing -> emitError
-                    Just  a -> pure a
+getAddress v = maybe emitError pure . M.lookup v . snd =<< lift get
 
 load :: Monad m => String -> CodeGen m ()
 load v = getAddress v >>= emitCode . pure . LOAD
@@ -63,49 +58,46 @@ codeGen :: Program -> Either CodeGenError [TAM]
 codeGen p = ($ []) . runDList <$> runExcept (evalStateT (execWriterT (codeGenProg p)) (0, M.empty))
 
 codeGenProg :: Monad m => Program -> CodeGen m ()
-codeGenProg (Program ds c) = codeGenDecls ds *> codeGenCommand c *> emitCode [HALT]
-
-codeGenDecls :: Monad m => [Declaration] -> CodeGen m ()
-codeGenDecls = mapM_ codeGenDecl . zip [0..]
+codeGenProg (Program ds c) = mapM_ codeGenDecl (zip [0..] ds) *> codeGenCommand c *> emitCode [HALT]
 
 codeGenDecl :: Monad m => (Address, Declaration) -> CodeGen m ()
-codeGenDecl (a, Initialise i _ e) = codeGenExpr e *> setAddress i a
+codeGenDecl (a, Initialise _ i _ e) = codeGenExpr e *> setAddress i a
 
 codeGenCommand :: Monad m => Command -> CodeGen m ()
-codeGenCommand (Assign i e) =    codeGenExpr e *> store i
-codeGenCommand (If e t f)   = do l1 <- freshLabel
-                                 l2 <- freshLabel
-                                 codeGenExpr e
-                                 emitCode [JUMPIFZ l1]
-                                 codeGenCommand t
-                                 emitCode [JUMP l2, LABEL l1]
-                                 codeGenCommand f
-                                 emitCode [LABEL l2]
-codeGenCommand (While e t)  = do l1 <- freshLabel
-                                 l2 <- freshLabel
-                                 emitCode [LABEL l1]
-                                 codeGenExpr e
-                                 emitCode [JUMPIFZ l2]
-                                 codeGenCommand t
-                                 emitCode [JUMP l1, LABEL l2]
-codeGenCommand (GetInt i)   =    emitCode [GETINT] *> store i
-codeGenCommand (PrintInt e) =    codeGenExpr e *> emitCode [PUTINT]
-codeGenCommand (Block cs)   =    mapM_ codeGenCommand cs
+codeGenCommand (Assign _ i e) =    codeGenExpr e *> store i
+codeGenCommand (If e t f)     = do l1 <- freshLabel
+                                   l2 <- freshLabel
+                                   codeGenExpr e
+                                   emitCode [JUMPIFZ l1]
+                                   codeGenCommand t
+                                   emitCode [JUMP l2, LABEL l1]
+                                   codeGenCommand f
+                                   emitCode [LABEL l2]
+codeGenCommand (While e t)    = do l1 <- freshLabel
+                                   l2 <- freshLabel
+                                   emitCode [LABEL l1]
+                                   codeGenExpr e
+                                   emitCode [JUMPIFZ l2]
+                                   codeGenCommand t
+                                   emitCode [JUMP l1, LABEL l2]
+codeGenCommand (GetInt _ i)   =    emitCode [GETINT] *> store i
+codeGenCommand (PrintInt e)   =    codeGenExpr e *> emitCode [PUTINT]
+codeGenCommand (Block cs)     =    mapM_ codeGenCommand cs
 
 codeGenExpr :: Monad m => Expr -> CodeGen m ()
-codeGenExpr (LitInteger n)                =    emitCode [LOADL n]
-codeGenExpr (LitBoolean b)                =    emitCode [LOADL (fromEnum b)]
-codeGenExpr (Variable  i)                 =    load i
-codeGenExpr (UnaryOp   op x)              =    codeGenExpr x *>                  codeGenUnOp  op
-codeGenExpr (BinaryOp  op x y)            =    codeGenExpr x *> codeGenExpr y *> codeGenBinOp op
-codeGenExpr (TernaryOp Conditional x y z) = do l1 <- freshLabel
-                                               l2 <- freshLabel
-                                               codeGenExpr x
-                                               emitCode [JUMPIFZ l1]
-                                               codeGenExpr y
-                                               emitCode [JUMP l2, LABEL l1]
-                                               codeGenExpr z
-                                               emitCode [LABEL l2]
+codeGenExpr (LitInteger _ n)                 =    emitCode [LOADL n]
+codeGenExpr (LitBoolean _ b)                 =    emitCode [LOADL (fromEnum b)]
+codeGenExpr (Variable   _ i)                 =    load i
+codeGenExpr (UnaryOp    _ op x)              =    codeGenExpr x *>                  codeGenUnOp  op
+codeGenExpr (BinaryOp   _ op x y)            =    codeGenExpr x *> codeGenExpr y *> codeGenBinOp op
+codeGenExpr (TernaryOp  _ Conditional x y z) = do l1 <- freshLabel
+                                                  l2 <- freshLabel
+                                                  codeGenExpr x
+                                                  emitCode [JUMPIFZ l1]
+                                                  codeGenExpr y
+                                                  emitCode [JUMP l2, LABEL l1]
+                                                  codeGenExpr z
+                                                  emitCode [LABEL l2]
 
 codeGenUnOp :: Monad m => UnaryOp -> CodeGen m ()
 codeGenUnOp IntegerNegation = emitCode [NEG]

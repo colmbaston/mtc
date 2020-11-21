@@ -20,9 +20,6 @@ data Token = TkLet
            | TkEnd
            | TkInteger
            | TkBoolean
-           | TkLitInteger Int
-           | TkLitBoolean Bool
-           | TkIdent      String
            | TkAssign
            | TkSemicolon
            | TkQuestion
@@ -40,52 +37,55 @@ data Token = TkLet
            | TkMultiplication
            | TkDivision
            | TkExclamation
-           | TkLeftPar
-           | TkRightPar
+           | TkLParen
+           | TkRParen
            | TkETX
+           | TkLitInteger Int
+           | TkLitBoolean Bool
+           | TkIdent      String
            deriving (Show, Eq)
 
 tokenise :: String -> Either ParseError [(SrcPos, Token)]
 tokenise = fmap fst . parse (many (many space *> oneToken) <* many space <* etx <?> "unrecognised token") . annotate
 
 oneToken :: Parser Char (SrcPos, Token)
-oneToken = (,) <$> srcPos <*> (tokens "let"      $> TkLet      <* peekNotAlphaNum
-                          <|>  tokens "in"       $> TkIn       <* peekNotAlphaNum
-                          <|>  tokens "var"      $> TkVar      <* peekNotAlphaNum
-                          <|>  tokens "if"       $> TkIf       <* peekNotAlphaNum
-                          <|>  tokens "then"     $> TkThen     <* peekNotAlphaNum
-                          <|>  tokens "else"     $> TkElse     <* peekNotAlphaNum
-                          <|>  tokens "while"    $> TkWhile    <* peekNotAlphaNum
-                          <|>  tokens "do"       $> TkDo       <* peekNotAlphaNum
-                          <|>  tokens "getint"   $> TkGetInt   <* peekNotAlphaNum
-                          <|>  tokens "printint" $> TkPrintInt <* peekNotAlphaNum
-                          <|>  tokens "begin"    $> TkBegin    <* peekNotAlphaNum
-                          <|>  tokens "end"      $> TkEnd      <* peekNotAlphaNum
-                          <|>  tokens "Integer"  $> TkInteger  <* peekNotAlphaNum
-                          <|>  tokens "Boolean"  $> TkBoolean  <* peekNotAlphaNum
-                          <|>  TkLitInteger <$>  natural <* peekNotAlphaNum
-                          <|>  TkLitBoolean <$> (tokens "false" $> False <|> tokens "true" $> True) <* peekNotAlphaNum
-                          <|>  TkIdent      <$> ((:) <$> sat nextToken isAlpha <*> many (sat nextToken isAlphaNum))
-                          <|>  tokens ":="       $> TkAssign
-                          <|>  tokens ";"        $> TkSemicolon
-                          <|>  tokens "?"        $> TkQuestion
-                          <|>  tokens ":"        $> TkColon
-                          <|>  tokens "||"       $> TkDisjunction
-                          <|>  tokens "&&"       $> TkConjunction
-                          <|>  tokens "=="       $> TkEqual
-                          <|>  tokens "!="       $> TkNotEqual
-                          <|>  tokens "<="       $> TkLessEqual
-                          <|>  tokens "<"        $> TkLess
-                          <|>  tokens ">="       $> TkGreaterEqual
-                          <|>  tokens ">"        $> TkGreater
-                          <|>  tokens "+"        $> TkAddition
-                          <|>  tokens "-"        $> TkSubtraction
-                          <|>  tokens "*"        $> TkMultiplication
-                          <|>  tokens "/"        $> TkDivision
-                          <|>  tokens "!"        $> TkExclamation
-                          <|>  tokens "("        $> TkLeftPar
-                          <|>  tokens ")"        $> TkRightPar
-                          <|>  tokens "\ETX"     $> TkETX)
+oneToken = (,) <$> srcPos <*> (TkLet            <$   tokens "let"      <* peekNotAlphaNum
+                          <|>  TkIn             <$   tokens "in"       <* peekNotAlphaNum
+                          <|>  TkVar            <$   tokens "var"      <* peekNotAlphaNum
+                          <|>  TkIf             <$   tokens "if"       <* peekNotAlphaNum
+                          <|>  TkThen           <$   tokens "then"     <* peekNotAlphaNum
+                          <|>  TkElse           <$   tokens "else"     <* peekNotAlphaNum
+                          <|>  TkWhile          <$   tokens "while"    <* peekNotAlphaNum
+                          <|>  TkDo             <$   tokens "do"       <* peekNotAlphaNum
+                          <|>  TkGetInt         <$   tokens "getint"   <* peekNotAlphaNum
+                          <|>  TkPrintInt       <$   tokens "printint" <* peekNotAlphaNum
+                          <|>  TkBegin          <$   tokens "begin"    <* peekNotAlphaNum
+                          <|>  TkEnd            <$   tokens "end"      <* peekNotAlphaNum
+                          <|>  TkInteger        <$   tokens "Integer"  <* peekNotAlphaNum
+                          <|>  TkBoolean        <$   tokens "Boolean"  <* peekNotAlphaNum
+                          <|>  TkAssign         <$   tokens ":="
+                          <|>  TkSemicolon      <$   tokens ";"
+                          <|>  TkQuestion       <$   tokens "?"
+                          <|>  TkColon          <$   tokens ":"
+                          <|>  TkDisjunction    <$   tokens "||"
+                          <|>  TkConjunction    <$   tokens "&&"
+                          <|>  TkEqual          <$   tokens "=="
+                          <|>  TkNotEqual       <$   tokens "!="
+                          <|>  TkLessEqual      <$   tokens "<="
+                          <|>  TkLess           <$   tokens "<"
+                          <|>  TkGreaterEqual   <$   tokens ">="
+                          <|>  TkGreater        <$   tokens ">"
+                          <|>  TkAddition       <$   tokens "+"
+                          <|>  TkSubtraction    <$   tokens "-"
+                          <|>  TkMultiplication <$   tokens "*"
+                          <|>  TkDivision       <$   tokens "/"
+                          <|>  TkExclamation    <$   tokens "!"
+                          <|>  TkLParen         <$   tokens "("
+                          <|>  TkRParen         <$   tokens ")"
+                          <|>  TkETX            <$   tokens "\ETX"
+                          <|>  TkLitInteger     <$>  natural <* peekNotAlphaNum
+                          <|>  TkLitBoolean     <$> (tokens "false" $> False <|> tokens "true" $> True) <* peekNotAlphaNum
+                          <|>  TkIdent          <$> ((:) <$> sat nextToken isAlpha <*> many (sat nextToken isAlphaNum)))
 
 peekNotAlphaNum :: Parser Char ()
 peekNotAlphaNum = sat peekToken (maybe True (not . isAlphaNum)) $> ()
