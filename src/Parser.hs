@@ -63,7 +63,7 @@ nonEmptyFunParams = (:) <$> funParam <*> do tk <- peekToken
                                             case tk of
                                               Just TkComma  -> nextToken *> nonEmptyFunParams
                                               Just TkRParen -> pure []
-                                              _             -> empty <?> "expected token \",\" or the end of the parameter list"
+                                              _             -> empty <?> "expected token \",\" or \")\" to end the parameter list"
 
 funParam :: Parser Token Param
 funParam = Param <$>  srcPos
@@ -112,7 +112,7 @@ condExpr = do sp <- srcPos
               x  <- disjExpr
               tk <- peekToken
               case tk of
-                Just TkQuestion -> nextToken *> (TernaryOp sp Conditional x <$> disjExpr <*> (token TkColon <?> "expected token \":\"" *> disjExpr))
+                Just TkQuestion -> nextToken *> (TernaryOp sp Conditional x <$> condExpr <*> (token TkColon <?> "expected token \":\"" *> condExpr))
                 _               -> pure x
 
 disjExpr :: Parser Token Expr
@@ -176,9 +176,13 @@ atomExpr = do sp <- srcPos
                 Just (TkLitBoolean b) -> nextToken $> LitBoolean sp b
                 Just (TkIdent      i) -> nextToken *> atomIdent  sp i
                 Just  TkLParen        -> parens expr
-                Just  TkSubtraction   -> nextToken *> (UnaryOp sp IntegerNegation <$> atomExpr)
+                Just  TkSubtraction   -> nextToken *> (applyNegation sp           <$> atomExpr)
                 Just  TkExclamation   -> nextToken *> (UnaryOp sp BooleanNegation <$> atomExpr)
                 _                     -> empty <?> "expected an expression"
+
+applyNegation :: SrcPos -> Expr -> Expr
+applyNegation sp (LitInteger _ n) = LitInteger sp (negate n)
+applyNegation sp  e               = UnaryOp sp IntegerNegation e
 
 atomIdent :: SrcPos -> String -> Parser Token Expr
 atomIdent sp i = do tk <- peekToken
@@ -197,4 +201,4 @@ nonEmptyFunArgs = (:) <$> expr <*> do tk <- peekToken
                                       case tk of
                                         Just TkComma  -> nextToken *> nonEmptyFunArgs
                                         Just TkRParen -> pure []
-                                        _             -> empty <?> "expected token \",\" or the end of the argument list"
+                                        _             -> empty <?> "expected token \",\" or \")\" to end the argument list"
