@@ -2,6 +2,7 @@ module AST
 (
   Program(..),
   Declaration(..),
+  Param(..),
   TypeMT(..),
   Command(..),
   Expr(..),
@@ -17,9 +18,10 @@ import Data.Char
 
 -- MT AST
 
-data Program     = Program [Declaration] Command deriving Show
+data Program     = Program [Declaration] Command
 data Declaration = Initialise SrcPos String TypeMT Expr
-                 | Function   SrcPos String [(String, TypeMT)] TypeMT Expr deriving Show
+                 | Function   SrcPos String [Param] TypeMT Expr
+data Param       = Param SrcPos String TypeMT
 data TypeMT      = IntegerMT | BooleanMT deriving Eq
 
 data Command     = Assign SrcPos String Expr
@@ -28,7 +30,6 @@ data Command     = Assign SrcPos String Expr
                  | GetInt SrcPos String
                  | PrintInt Expr
                  | Block [Command]
-                 deriving Show
 
 data Expr        = LitInteger  SrcPos Int
                  | LitBoolean  SrcPos Bool
@@ -37,7 +38,6 @@ data Expr        = LitInteger  SrcPos Int
                  | UnaryOp     SrcPos UnaryOp   Expr
                  | BinaryOp    SrcPos BinaryOp  Expr Expr
                  | TernaryOp   SrcPos TernaryOp Expr Expr Expr
-                 deriving Show
 
 data UnaryOp     = IntegerNegation
                  | BooleanNegation
@@ -127,10 +127,10 @@ astDisplayDecl p (Function _ f ps t e) = node "Function"
                                        . nextLine p . leaf (show t)
                                        . lastLine p . astDisplayExpr (lastIndent p) e
 
-astDisplayParam :: ShowS -> (String, TypeMT) -> ShowS
-astDisplayParam p (v, t) = node "Parameter"
-                         . nextLine p . leaf v
-                         . lastLine p . leaf (show t)
+astDisplayParam :: ShowS -> Param -> ShowS
+astDisplayParam p (Param _ v t) = node "Parameter"
+                                . nextLine p . leaf v
+                                . lastLine p . leaf (show t)
 
 astDisplayComm :: ShowS -> Command -> ShowS
 astDisplayComm p (Assign _ v e) = node "Assign"

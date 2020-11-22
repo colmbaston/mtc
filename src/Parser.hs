@@ -52,21 +52,23 @@ funDecl = Function <$>  srcPos
                    <*> (token TkColon    <?> "expected token \":\"" *> typeMT)
                    <*> (token TkDefEqual <?> "expected token \"=\"" *> expr)
 
-funParams :: Parser Token [(String, TypeMT)]
+funParams :: Parser Token [Param]
 funParams = do tk <- peekToken
                case tk of
                  Just TkRParen -> pure []
                  _             -> nonEmptyFunParams
 
-nonEmptyFunParams :: Parser Token [(String, TypeMT)]
+nonEmptyFunParams :: Parser Token [Param]
 nonEmptyFunParams = (:) <$> funParam <*> do tk <- peekToken
                                             case tk of
                                               Just TkComma  -> nextToken *> nonEmptyFunParams
                                               Just TkRParen -> pure []
                                               _             -> empty <?> "expected token \",\" or the end of the parameter list"
 
-funParam :: Parser Token (String, TypeMT)
-funParam = (,) <$> identifier <*> (token TkColon <?> "expected token \":\"" *> typeMT)
+funParam :: Parser Token Param
+funParam = Param <$>  srcPos
+                 <*>  identifier
+                 <*> (token TkColon <?> "expected token \":\"" *> typeMT)
 
 typeMT :: Parser Token TypeMT
 typeMT =  token TkInteger $> IntegerMT
