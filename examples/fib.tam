@@ -1,12 +1,39 @@
+  LOADL   0
+  LOADL   0
   GETINT
+  STORE   [SB+0]
+#0:
+  LOAD    [SB+1]
+  LOAD    [SB+0]
+  GTR
+  NOT
+  JUMPIFZ #1
+  LOAD    [SB+1]
   CALL    #fib
   PUTINT
+  LOAD    [SB+1]
+  LOADL   1
+  ADD
+  STORE   [SB+1]
+  JUMP    #0
+#1:
   HALT
 #fib:
   LOAD    [LB-1]
-  LOADL   1
+  LOADL   0
   GTR
-  JUMPIFZ #a
+  NOT
+  JUMPIFZ #2
+  LOADL   0
+  JUMP    #3
+#2:
+  LOAD    [LB-1]
+  LOADL   1
+  EQL
+  JUMPIFZ #4
+  LOADL   1
+  JUMP    #3
+#4:
   LOAD    [LB-1]
   LOADL   1
   SUB
@@ -16,15 +43,5 @@
   SUB
   CALL    #fib
   ADD
-  JUMP    #b
-#a:
-  LOAD    [LB-1]
-  LOADL   1
-  EQL
-  JUMPIFZ #c
-  LOADL   1
-  JUMP    #b
-#c:
-  LOADL   0
-#b:
-  RETURN  1 1
+#3:
+  RETURN 1 1

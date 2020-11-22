@@ -75,7 +75,7 @@ formatInst (JUMPIFZ  l) = "  JUMPIFZ " ++ '#' : l
 formatInst (LOAD     a) = "  LOAD    " ++ formatAddr a
 formatInst (STORE    a) = "  STORE   " ++ formatAddr a
 formatInst (CALL     l) = "  CALL    " ++ '#' : l
-formatInst (RETURN m n) = "  RETURN " ++ show m ++ ' ' : show n
+formatInst (RETURN m n) = "  RETURN  " ++ show m ++ ' ' : show n
 formatInst  HALT        = "  HALT"
 
 formatAddr :: Address -> String
@@ -195,7 +195,7 @@ jump l jt = case M.lookup l jt of
               Just pc -> modify (\mem -> mem { programCounter = pc })
 
 getInt :: MonadIO m => Machine m Int
-getInt = do xs <- liftIO (putStr "GETINT> " >> hFlush stdout >> getLine)
+getInt = do xs <- liftIO (putStr "input> " *> hFlush stdout *> getLine)
             case fst <$> parse (many space *> integer <* many space <* token '\ETX' <* etx) (annotate xs) of
               Left  _ -> liftIO (putStrLn "could not parse as integer") >> getInt
               Right n -> pure n
@@ -222,7 +222,7 @@ exec is = fmap stack <$> runExceptT (execStateT run (Memory 0 0 Seq.empty))
     run = do pc <- programCounter <$> get
              if 0 <= pc && pc < len
                then case ia ! pc of
-                      HALT -> liftIO (putStrLn "HALTED")
+                      HALT -> liftIO (putStrLn "TAM halted")
                       i    -> step i >> run
                else emitError BufferOverrun
 
@@ -235,7 +235,7 @@ exec is = fmap stack <$> runExceptT (execStateT run (Memory 0 0 Seq.empty))
                            y <- pop
                            if x == 0
                              then emitError DivZero
-                             else push (y `div` x) >> increment
+                             else push (y `quot` x) >> increment
     step  NEG         = unOp negate
     step  AND         = binOp (\a b -> fromEnum (a /= 0 && b /= 0))
     step  OR          = binOp (\a b -> fromEnum (a /= 0 || b /= 0))
@@ -303,6 +303,7 @@ optimiseTAM = fixedPoint (cullLabels . mergeLabels . peephole)
         referenced :: TAM -> Map String Bool -> Map String Bool
         referenced (JUMP    l) m = M.insert          l True  m
         referenced (JUMPIFZ l) m = M.insert          l True  m
+        referenced (CALL    l) m = M.insert          l True  m
         referenced (LABEL   l) m = M.insertWith (||) l False m
         referenced  _          m = m
 

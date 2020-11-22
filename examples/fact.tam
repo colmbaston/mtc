@@ -1,37 +1,37 @@
   LOADL   0
   LOADL   0
-  LOADL   0
   GETINT
   STORE   [SB+0]
-  LOAD    [SB+0]
-  LOADL   0
-  LSS
-  JUMPIFZ #0
-  LOADL   0
-  STORE   [SB+1]
-  JUMP    #1
 #0:
-  LOADL   1
-  STORE   [SB+1]
-#1:
-  LOADL   2
-  STORE   [SB+2]
-#2:
-  LOAD    [SB+2]
+  LOAD    [SB+1]
   LOAD    [SB+0]
   GTR
   NOT
-  JUMPIFZ #3
+  JUMPIFZ #1
   LOAD    [SB+1]
-  LOAD    [SB+2]
-  MUL
-  STORE   [SB+1]
-  LOAD    [SB+2]
+  CALL    #fact
+  PUTINT
+  LOAD    [SB+1]
   LOADL   1
   ADD
-  STORE   [SB+2]
-  JUMP    #2
-#3:
-  LOAD    [SB+1]
-  PUTINT
+  STORE   [SB+1]
+  JUMP    #0
+#1:
   HALT
+#fact:
+  LOAD    [LB-1]
+  LOADL   1
+  GTR
+  NOT
+  JUMPIFZ #2
+  LOADL   1
+  JUMP    #3
+#2:
+  LOAD    [LB-1]
+  LOAD    [LB-1]
+  LOADL   1
+  SUB
+  CALL    #fact
+  MUL
+#3:
+  RETURN  1 1

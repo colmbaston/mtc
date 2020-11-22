@@ -1,16 +1,13 @@
 let
   var n : Integer;
-  var x : Integer;
-  var i : Integer
+  var i : Integer := 0;
+  fun fact(n : Integer) : Integer = n <= 1 ? 1 : n * fact(n-1)
 in
 begin
-  getint (n);
-  if n < 0 then x := 0 else x := 1;
-  i := 2;
+  getint(n);
   while i <= n do
-    begin
-      x := x * i;
-      i := i + 1
-    end;
-  printint (x)
+  begin
+    printint(fact(i));
+    i := i + 1
+  end
 end
