@@ -1,7 +1,7 @@
 let
   var i : Integer;
   var j : Integer;
-  fun ack(m : Integer, n : Integer) : Integer = m <= 0 ? n + 1 : (n <= 0 ? ack(m-1, 1) : ack(m-1, ack(m, n-1)))
+  fun ack(m : Integer, n : Integer) : Integer = m <= 0 ? n + 1 : n <= 0 ? ack(m-1, 1) : ack(m-1, ack(m, n-1))
 in
 begin
   i := 0;

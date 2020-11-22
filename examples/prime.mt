@@ -4,7 +4,7 @@ let
   var i        : Integer;
   var continue : Boolean;
   fun max(m : Integer, n : Integer) : Integer = m > n ? m : n;
-  fun divides(m : Integer, n : Integer) : Boolean = n/m * m == n
+  fun divides(m : Integer, n : Integer) : Boolean = n / m * m == n
 in
 begin
   getint(lower);

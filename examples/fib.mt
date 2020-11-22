@@ -1,7 +1,7 @@
 let
   var n : Integer;
   var i : Integer := 0;
-  fun fib(n : Integer) : Integer = n <= 0 ? 0 : (n == 1 ? 1 : fib(n-1) + fib(n-2))
+  fun fib(n : Integer) : Integer = n < 1 ? 0 : n == 1 ? 1 : fib(n-1) + fib(n-2)
 in
 begin
   getint(n);

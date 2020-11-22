@@ -1,20 +1,17 @@
   LOADL   0
-  LOADL   0
-  GETINT
-  STORE   [SB+0]
 #0:
-  LOAD    [SB+1]
   LOAD    [SB+0]
+  LOADL   20
   GTR
   NOT
   JUMPIFZ #1
-  LOAD    [SB+1]
+  LOAD    [SB+0]
   CALL    #fact
   PUTINT
-  LOAD    [SB+1]
+  LOAD    [SB+0]
   LOADL   1
   ADD
-  STORE   [SB+1]
+  STORE   [SB+0]
   JUMP    #0
 #1:
   HALT

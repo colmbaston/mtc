@@ -20,9 +20,8 @@
   HALT
 #fib:
   LOAD    [LB-1]
-  LOADL   0
-  GTR
-  NOT
+  LOADL   1
+  LSS
   JUMPIFZ #2
   LOADL   0
   JUMP    #3
