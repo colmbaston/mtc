@@ -101,10 +101,7 @@ srcPos :: Parser t SrcPos
 srcPos = peek >>= maybe empty (pure . fst)
 
 etx :: Parser t ()
-etx = do src <- Parser get
-         case src of
-           [] -> pure ()
-           _  -> empty
+etx = peek >>= maybe (pure ()) (const empty)
 
 sat :: Parser t a -> (a -> Bool) -> Parser t a
 sat px f = do x <- px

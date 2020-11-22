@@ -9,6 +9,7 @@ import Control.Applicative
 data Token = TkLet
            | TkIn
            | TkVar
+           | TkFun
            | TkIf
            | TkThen
            | TkElse
@@ -20,6 +21,8 @@ data Token = TkLet
            | TkEnd
            | TkInteger
            | TkBoolean
+           | TkComma
+           | TkDefEqual
            | TkAssign
            | TkSemicolon
            | TkQuestion
@@ -52,6 +55,7 @@ oneToken :: Parser Char (SrcPos, Token)
 oneToken = (,) <$> srcPos <*> (TkLet            <$   tokens "let"      <* peekNotAlphaNum
                           <|>  TkIn             <$   tokens "in"       <* peekNotAlphaNum
                           <|>  TkVar            <$   tokens "var"      <* peekNotAlphaNum
+                          <|>  TkFun            <$   tokens "fun"      <* peekNotAlphaNum
                           <|>  TkIf             <$   tokens "if"       <* peekNotAlphaNum
                           <|>  TkThen           <$   tokens "then"     <* peekNotAlphaNum
                           <|>  TkElse           <$   tokens "else"     <* peekNotAlphaNum
@@ -63,6 +67,7 @@ oneToken = (,) <$> srcPos <*> (TkLet            <$   tokens "let"      <* peekNo
                           <|>  TkEnd            <$   tokens "end"      <* peekNotAlphaNum
                           <|>  TkInteger        <$   tokens "Integer"  <* peekNotAlphaNum
                           <|>  TkBoolean        <$   tokens "Boolean"  <* peekNotAlphaNum
+                          <|>  TkComma          <$   tokens ","
                           <|>  TkAssign         <$   tokens ":="
                           <|>  TkSemicolon      <$   tokens ";"
                           <|>  TkQuestion       <$   tokens "?"
@@ -70,6 +75,7 @@ oneToken = (,) <$> srcPos <*> (TkLet            <$   tokens "let"      <* peekNo
                           <|>  TkDisjunction    <$   tokens "||"
                           <|>  TkConjunction    <$   tokens "&&"
                           <|>  TkEqual          <$   tokens "=="
+                          <|>  TkDefEqual       <$   tokens "="
                           <|>  TkNotEqual       <$   tokens "!="
                           <|>  TkLessEqual      <$   tokens "<="
                           <|>  TkLess           <$   tokens "<"

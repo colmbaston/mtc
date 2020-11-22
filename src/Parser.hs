@@ -28,19 +28,50 @@ decls = (:) <$> decl
                      _                -> pure []
 
 decl :: Parser Token Declaration
-decl = do (sp, i) <- token TkVar  <?> "expected token \"var\"" *> ((,) <$> srcPos <*> identifier)
-          ty      <- token TkColon *> typeMT
-          tk      <- peekToken
-          Initialise sp i ty <$> case tk of
-                                   Just TkAssign -> nextToken *> expr
-                                   _             -> pure (case ty of
-                                                            IntegerMT -> LitInteger sp 0
-                                                            BooleanMT -> LitBoolean sp False)
+decl = do tk <- nextToken
+          case tk of
+            TkVar -> varDecl
+            TkFun -> funDecl
+            _     -> empty <?> "expected token \"var\" or \"fun\""
+
+varDecl :: Parser Token Declaration
+varDecl = do sp <- srcPos
+             i  <- identifier
+             ty <- token TkColon <?> "expected token \":\"" *> typeMT
+             Initialise sp i ty <$> do tk <- peekToken
+                                       case tk of
+                                         Just TkAssign -> nextToken *> expr
+                                         _             -> pure (case ty of
+                                                                  IntegerMT -> LitInteger sp 0
+                                                                  BooleanMT -> LitBoolean sp False)
+
+funDecl :: Parser Token Declaration
+funDecl = Function <$>  srcPos
+                   <*>  identifier
+                   <*>  parens funParams
+                   <*> (token TkColon    <?> "expected token \":\"" *> typeMT)
+                   <*> (token TkDefEqual <?> "expected token \"=\"" *> expr)
+
+funParams :: Parser Token [(String, TypeMT)]
+funParams = do tk <- peekToken
+               case tk of
+                 Just TkRParen -> pure []
+                 _             -> nonEmptyFunParams
+
+nonEmptyFunParams :: Parser Token [(String, TypeMT)]
+nonEmptyFunParams = (:) <$> funParam <*> do tk <- peekToken
+                                            case tk of
+                                              Just TkComma  -> nextToken *> nonEmptyFunParams
+                                              Just TkRParen -> pure []
+                                              _             -> empty <?> "expected token \",\" or the end of the parameter list"
+
+funParam :: Parser Token (String, TypeMT)
+funParam = (,) <$> identifier <*> (token TkColon <?> "expected token \":\"" *> typeMT)
 
 typeMT :: Parser Token TypeMT
 typeMT =  token TkInteger $> IntegerMT
       <|> token TkBoolean $> BooleanMT
-      <|> empty <?> "expected a type"
+      <|> empty <?> "expected token \"Integer\" or \"Boolean\""
 
 command :: Parser Token Command
 command =  Assign         <$>  srcPos
@@ -79,7 +110,7 @@ condExpr = do sp <- srcPos
               x  <- disjExpr
               tk <- peekToken
               case tk of
-                Just TkQuestion -> TernaryOp sp Conditional x <$> (nextToken *> disjExpr) <*> (token TkColon <?> "expected token \":\"" *> disjExpr)
+                Just TkQuestion -> nextToken *> (TernaryOp sp Conditional x <$> disjExpr <*> (token TkColon <?> "expected token \":\"" *> disjExpr))
                 _               -> pure x
 
 disjExpr :: Parser Token Expr
@@ -87,7 +118,7 @@ disjExpr = do sp <- srcPos
               x  <- conjExpr
               tk <- peekToken
               case tk of
-                Just TkDisjunction -> BinaryOp sp Disjunction x <$> (nextToken *> disjExpr)
+                Just TkDisjunction -> nextToken *> (BinaryOp sp Disjunction x <$> disjExpr)
                 _                  -> pure x
 
 conjExpr :: Parser Token Expr
@@ -95,7 +126,7 @@ conjExpr = do sp <- srcPos
               x <- relExpr
               tk <- peekToken
               case tk of
-                Just TkConjunction -> BinaryOp sp Conjunction x <$> (nextToken *> conjExpr)
+                Just TkConjunction -> nextToken *> (BinaryOp sp Conjunction x <$> conjExpr)
                 _                  -> pure x
 
 relExpr :: Parser Token Expr
@@ -103,12 +134,12 @@ relExpr = do sp <- srcPos
              x  <- addExpr
              tk <- peekToken
              case tk of
-               Just TkEqual        -> BinaryOp sp Equal        x <$> (nextToken *> addExpr)
-               Just TkNotEqual     -> BinaryOp sp NotEqual     x <$> (nextToken *> addExpr)
-               Just TkLess         -> BinaryOp sp Less         x <$> (nextToken *> addExpr)
-               Just TkLessEqual    -> BinaryOp sp LessEqual    x <$> (nextToken *> addExpr)
-               Just TkGreater      -> BinaryOp sp Greater      x <$> (nextToken *> addExpr)
-               Just TkGreaterEqual -> BinaryOp sp GreaterEqual x <$> (nextToken *> addExpr)
+               Just TkEqual        -> nextToken *> (BinaryOp sp Equal        x <$> addExpr)
+               Just TkNotEqual     -> nextToken *> (BinaryOp sp NotEqual     x <$> addExpr)
+               Just TkLess         -> nextToken *> (BinaryOp sp Less         x <$> addExpr)
+               Just TkLessEqual    -> nextToken *> (BinaryOp sp LessEqual    x <$> addExpr)
+               Just TkGreater      -> nextToken *> (BinaryOp sp Greater      x <$> addExpr)
+               Just TkGreaterEqual -> nextToken *> (BinaryOp sp GreaterEqual x <$> addExpr)
                _                   -> pure x
 
 addExpr :: Parser Token Expr
@@ -139,10 +170,29 @@ atomExpr :: Parser Token Expr
 atomExpr = do sp <- srcPos
               tk <- peekToken
               case tk of
-                Just (TkLitInteger n) -> LitInteger sp <$> (nextToken $> n)
-                Just (TkLitBoolean b) -> LitBoolean sp <$> (nextToken $> b)
-                Just (TkIdent      v) -> Variable   sp <$> (nextToken $> v)
+                Just (TkLitInteger n) -> nextToken $> LitInteger sp n
+                Just (TkLitBoolean b) -> nextToken $> LitBoolean sp b
+                Just (TkIdent      i) -> nextToken *> atomIdent  sp i
                 Just  TkLParen        -> parens expr
-                Just  TkSubtraction   -> UnaryOp sp IntegerNegation <$> (nextToken *> atomExpr)
-                Just  TkExclamation   -> UnaryOp sp BooleanNegation <$> (nextToken *> atomExpr)
+                Just  TkSubtraction   -> nextToken *> (UnaryOp sp IntegerNegation <$> atomExpr)
+                Just  TkExclamation   -> nextToken *> (UnaryOp sp BooleanNegation <$> atomExpr)
                 _                     -> empty <?> "expected an expression"
+
+atomIdent :: SrcPos -> String -> Parser Token Expr
+atomIdent sp i = do tk <- peekToken
+                    case tk of
+                      Just TkLParen -> Application sp i <$> parens funArgs
+                      _             -> pure (Variable sp i)
+
+funArgs :: Parser Token [Expr]
+funArgs = do tk <- peekToken
+             case tk of
+               Just TkRParen -> pure []
+               _             -> nonEmptyFunArgs
+
+nonEmptyFunArgs :: Parser Token [Expr]
+nonEmptyFunArgs = (:) <$> expr <*> do tk <- peekToken
+                                      case tk of
+                                        Just TkComma  -> nextToken *> nonEmptyFunArgs
+                                        Just TkRParen -> pure []
+                                        _             -> empty <?> "expected token \",\" or the end of the argument list"
