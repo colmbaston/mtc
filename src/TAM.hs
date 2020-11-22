@@ -81,7 +81,10 @@ formatInst  HALT        = "  HALT"
 formatAddr :: Address -> String
 formatAddr a = "[" ++ r ++ (if d >= 0 then "+" else "") ++ show d ++ "]"
   where
+    r :: String
     r = case a of SB _ -> "SB" ; LB _ -> "LB"
+
+    d :: Int
     d = case a of SB x -> x    ; LB x -> x
 
 -- PARSING TAM CODE

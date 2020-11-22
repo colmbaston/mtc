@@ -31,8 +31,8 @@ instance Show TypeCheckError where
                                         DeclMult i     -> showString "identifier " . showString i . showString " is declared multiple times"
                                         DeclFun  i     -> showString "identifier " . showString i . showString " is declared as a function, not as a variable"
                                         DeclVar  i     -> showString "identifier " . showString i . showString " is declared as a variable, not as a function"
-                                        ArgsFew  f     -> showString "function "   . showString f . showString " was applied to too few arguments"
-                                        ArgsMany f     -> showString "function "   . showString f . showString " was applied to too many arguments"
+                                        ArgsFew  f     -> showString "function "   . showString f . showString " is applied to too few arguments"
+                                        ArgsMany f     -> showString "function "   . showString f . showString " is applied to too many arguments"
                                         Expected te ta -> showString "expected type " . shows te . showString " but the actual type is " . shows ta
 
 -- TYPE-CHECKING MONAD
