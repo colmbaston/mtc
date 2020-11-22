@@ -46,8 +46,8 @@ usageFail = do p <- getProgName
                putStrLn "MiniTriangle Compiler"
                putStrLn ""
                putStrLn "Usage:"
-               putStr   "  " *> putStr p *> putStrLn " file/path.mt  [MT  mode]"
-               putStr   "  " *> putStr p *> putStrLn " file/path.tam [TAM mode]"
+               putStr   "  " >> putStr p >> putStrLn " file/path.mt  [MT  mode]"
+               putStr   "  " >> putStr p >> putStrLn " file/path.tam [TAM mode]"
                putStrLn ""
                putStrLn "Modes available for MT code:"
                putStrLn "  --compile  compile the program to TAM code and write it to a file (default)"
@@ -63,40 +63,30 @@ readFileChecked :: FilePath -> IO String
 readFileChecked file = catch (readFile file) handler
   where
     handler :: IOError -> IO a
-    handler _ = putStr "file error: failed to read " *> putStr file *> putStrLn " from the filesystem" *> exitFailure
+    handler _ = putStr "file system error: failed to read file " >> putStrLn file >> exitFailure
 
 writeFileChecked :: FilePath -> String -> IO ()
 writeFileChecked file contents = catch (writeFile file contents) handler
   where
     handler :: IOError -> IO a
-    handler _ = putStr "file error: failed to write " *> putStr file *> putStrLn " to the filesystem" *> exitFailure
+    handler _ = putStr "file system error: failed to write file " >> putStrLn file >> exitFailure
 
 -- MODE HANDLING
 
+handleError :: Show e => Either e a -> IO a
+handleError = either (\e -> print e >> exitFailure) pure
+
 readMT :: FilePath -> IO Program
-readMT file = do src <- readFileChecked file
-                 case parseProgram src of
-                   Left  e -> print e *> exitFailure
-                   Right p -> pure p
+readMT file = readFileChecked file >>= handleError . parseProgram
 
 compileMT :: Program -> IO [TAM]
-compileMT p = case typeCheck p of
-                Left   e -> print e *> exitFailure
-                Right () -> case optimiseTAM <$> codeGen p of
-                              Left   e -> print e *> exitFailure
-                              Right is -> pure is
+compileMT p = handleError (typeCheck p) >> handleError (optimiseTAM <$> codeGen p)
 
 readTAM :: FilePath -> IO [TAM]
-readTAM file = do src <- readFileChecked file
-                  case parseTAM src of
-                    Left   e -> print e *> exitFailure
-                    Right is -> pure is
+readTAM file = readFileChecked file >>= handleError . parseTAM
 
 writeTAM :: FilePath -> [TAM] -> IO ()
-writeTAM file code = writeFileChecked file (formatTAM code) *> putStr "TAM code written to " *> putStrLn file
+writeTAM file code = writeFileChecked file (formatTAM code) >> putStr "TAM code written to " >> putStrLn file
 
 runTAM :: [TAM] -> IO ()
-runTAM code = do r <- exec code
-                 case r of
-                   Left  e -> print e *> exitFailure
-                   Right _ -> pure ()
+runTAM code = exec code >>= handleError >> pure ()
