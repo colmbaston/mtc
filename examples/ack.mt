@@ -8,7 +8,7 @@ begin
   while i <= 3 do
     begin
       j := 0;
-      while j <= 9 do
+      while j <= 10 do
         begin
           printint(ack(i, j));
           j := j + 1

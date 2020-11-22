@@ -12,7 +12,7 @@
   STORE   [SB+1]
 #2:
   LOAD    [SB+1]
-  LOADL   9
+  LOADL   10
   GTR
   NOT
   JUMPIFZ #3
