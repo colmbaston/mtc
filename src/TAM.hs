@@ -120,15 +120,15 @@ inst =  (LOADL   <$  tokens "LOADL")   <*> (some inlineSpace *> integer)
     <|> (HALT    <$  tokens "HALT")
 
 address :: Parser Char Address
-address = token '[' *> many inlineSpace *> register <*> (many inlineSpace *> sign <*> (many inlineSpace *> natural)) <* many inlineSpace <* token ']'
+address = token '[' *> many inlineSpace *> (register <|> SB <$> natural) <* many inlineSpace <* token ']'
 
-register :: Parser Char (Int -> Address)
-register = tokens "SB" $> SB <|> tokens "LB" $> LB
+register :: Parser Char Address
+register = (tokens "SB" $> SB <|> tokens "LB" $> LB) <*> (many inlineSpace *> sign <*> (many inlineSpace *> natural))
 
 label :: Parser Char String
 label = token '#' *> some (sat nextToken isAlphaNum)
 
--- EXECUTING TAM CODE
+-- EXECUTION MONAD
 
 data ExecError    = ExecError Int ErrorDetails
 data ErrorDetails = InvalidAddress Address
@@ -197,11 +197,16 @@ jump l jt = case M.lookup l jt of
               Nothing -> emitError (InvalidLabel l)
               Just pc -> modify (\mem -> mem { programCounter = pc })
 
+frameSize :: Monad m => Machine m Int
+frameSize = (\mem -> Seq.length (stack mem) - localBase mem) <$> get
+
 getInt :: MonadIO m => Machine m Int
 getInt = do xs <- liftIO (putStr "input> " *> hFlush stdout *> getLine)
             case fst <$> parse (many space *> integer <* many space <* token '\ETX' <* etx) (annotate xs) of
               Left  _ -> liftIO (putStrLn "could not parse as integer") >> getInt
               Right n -> pure n
+
+-- EXECUTING TAM CODE
 
 type JumpTable = Map String Int
 
@@ -258,6 +263,8 @@ exec is = fmap stack <$> runExceptT (execStateT run (Memory 0 0 Seq.empty))
                            modify (\mem -> mem { localBase = lb })
                            jump l jt
     step (RETURN m n) = do xs <- Seq.replicateA m pop
+                           fs <- frameSize
+                           replicateM_ (fs - 2) pop
                            ra <- pop
                            lb <- pop
                            replicateM_ n pop
