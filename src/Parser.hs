@@ -126,7 +126,7 @@ disjExpr = do sp <- srcPos
 
 conjExpr :: Parser Token Expr
 conjExpr = do sp <- srcPos
-              x <- relExpr
+              x  <- relExpr
               tk <- peekToken
               case tk of
                 Just TkConjunction -> nextToken *> (BinaryOp sp Conjunction x <$> conjExpr)
