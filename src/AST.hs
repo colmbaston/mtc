@@ -59,14 +59,14 @@ data TernaryOp   = Conditional
 
 -- DISPLAYING AST AS A TREE
 
-sameLine :: ShowS
-sameLine = showString " ── "
+sameBranch :: ShowS
+sameBranch = showString " ── "
 
-nextLine :: ShowS -> ShowS
-nextLine p = showChar '\n' . p . showString "├── "
+nextBranch :: ShowS -> ShowS
+nextBranch p = showChar '\n' . p . showString "├── "
 
-lastLine :: ShowS -> ShowS
-lastLine p = showChar '\n' . p . showString "└── "
+lastBranch :: ShowS -> ShowS
+lastBranch p = showChar '\n' . p . showString "└── "
 
 sameIndent :: Int -> ShowS -> ShowS
 sameIndent n p = p . showString (replicate n ' ')
@@ -113,64 +113,64 @@ astDisplay p = astDisplayProg id p ""
 
 astDisplayProg :: ShowS -> Program -> ShowS
 astDisplayProg p (Program ds c) = node "Program"
-                                . nextLine p . node "Declarations" . astDisplayList 16 astDisplayDecl (nextIndent p) ds
-                                . lastLine p . astDisplayComm (lastIndent p) c
+                                . nextBranch p . node "Declarations" . astDisplayList 16 astDisplayDecl (nextIndent p) ds
+                                . lastBranch p . astDisplayComm (lastIndent p) c
 
 astDisplayDecl :: ShowS -> Declaration -> ShowS
 astDisplayDecl p (Initialise _ v t e)  = node "Initialise"
-                                       . nextLine p . leaf v
-                                       . nextLine p . leaf (show t)
-                                       . lastLine p . astDisplayExpr (lastIndent p) e
+                                       . nextBranch p . leaf v
+                                       . nextBranch p . leaf (show t)
+                                       . lastBranch p . astDisplayExpr (lastIndent p) e
 astDisplayDecl p (Function _ f ps t e) = node "Function"
-                                       . nextLine p . leaf f
-                                       . nextLine p . node "Parameters" . astDisplayList 14 astDisplayParam (nextIndent p) ps
-                                       . nextLine p . leaf (show t)
-                                       . lastLine p . astDisplayExpr (lastIndent p) e
+                                       . nextBranch p . leaf f
+                                       . nextBranch p . node "Parameters" . astDisplayList 14 astDisplayParam (nextIndent p) ps
+                                       . nextBranch p . leaf (show t)
+                                       . lastBranch p . astDisplayExpr (lastIndent p) e
 
 astDisplayParam :: ShowS -> Param -> ShowS
 astDisplayParam p (Param _ v t) = node "Parameter"
-                                . nextLine p . leaf v
-                                . lastLine p . leaf (show t)
+                                . nextBranch p . leaf v
+                                . lastBranch p . leaf (show t)
 
 astDisplayComm :: ShowS -> Command -> ShowS
 astDisplayComm p (Assign _ v e) = node "Assign"
-                                . nextLine p . leaf v
-                                . lastLine p . astDisplayExpr (lastIndent p) e
+                                . nextBranch p . leaf v
+                                . lastBranch p . astDisplayExpr (lastIndent p) e
 astDisplayComm p (If e t f)     = node "If"
-                                . nextLine p . astDisplayExpr (nextIndent p) e
-                                . nextLine p . astDisplayComm (nextIndent p) t
-                                . lastLine p . astDisplayComm (lastIndent p) f
+                                . nextBranch p . astDisplayExpr (nextIndent p) e
+                                . nextBranch p . astDisplayComm (nextIndent p) t
+                                . lastBranch p . astDisplayComm (lastIndent p) f
 astDisplayComm p (While e c)    = node "While"
-                                . nextLine p . astDisplayExpr (nextIndent p) e
-                                . lastLine p . astDisplayComm (lastIndent p) c
-astDisplayComm _ (GetInt _ v)   = node "GetInt"   . sameLine . leaf v
-astDisplayComm p (PrintInt e)   = node "PrintInt" . sameLine . astDisplayExpr (sameIndent 12 p) e
+                                . nextBranch p . astDisplayExpr (nextIndent p) e
+                                . lastBranch p . astDisplayComm (lastIndent p) c
+astDisplayComm _ (GetInt _ v)   = node "GetInt"   . sameBranch . leaf v
+astDisplayComm p (PrintInt e)   = node "PrintInt" . sameBranch . astDisplayExpr (sameIndent 12 p) e
 astDisplayComm p (Block cs)     = node "Block"    . astDisplayList 9 astDisplayComm p cs
 
 astDisplayExpr :: ShowS -> Expr -> ShowS
-astDisplayExpr _ (LitInteger _ n)         = node "LitInteger" . sameLine . leaf (show n)
-astDisplayExpr _ (LitBoolean _ b)         = node "LitBoolean" . sameLine . leaf (let c:cs = show b in toLower c : cs)
-astDisplayExpr _ (Variable   _ v)         = node "Variable"   . sameLine . leaf v
+astDisplayExpr _ (LitInteger _ n)         = node "LitInteger" . sameBranch . leaf (show n)
+astDisplayExpr _ (LitBoolean _ b)         = node "LitBoolean" . sameBranch . leaf (let c:cs = show b in toLower c : cs)
+astDisplayExpr _ (Variable   _ v)         = node "Variable"   . sameBranch . leaf v
 astDisplayExpr p (Application _ f as)     = node "Application"
-                                          . nextLine p . leaf f
-                                          . lastLine p . node "Arguments" . astDisplayList 13 astDisplayExpr (lastIndent p) as
+                                          . nextBranch p . leaf f
+                                          . lastBranch p . node "Arguments" . astDisplayList 13 astDisplayExpr (lastIndent p) as
 astDisplayExpr p (UnaryOp     _ op x)     = node "UnaryOp"
-                                          . nextLine p . leaf (show op)
-                                          . lastLine p . astDisplayExpr (lastIndent p) x
+                                          . nextBranch p . leaf (show op)
+                                          . lastBranch p . astDisplayExpr (lastIndent p) x
 astDisplayExpr p (BinaryOp    _ op x y)   = node "BinaryOp"
-                                          . nextLine p . leaf (show op)
-                                          . nextLine p . astDisplayExpr (nextIndent p) x
-                                          . lastLine p . astDisplayExpr (lastIndent p) y
+                                          . nextBranch p . leaf (show op)
+                                          . nextBranch p . astDisplayExpr (nextIndent p) x
+                                          . lastBranch p . astDisplayExpr (lastIndent p) y
 astDisplayExpr p (TernaryOp   _ op x y z) = node "TernaryOp"
-                                          . nextLine p . leaf (show op)
-                                          . nextLine p . astDisplayExpr (nextIndent p) x
-                                          . nextLine p . astDisplayExpr (nextIndent p) y
-                                          . lastLine p . astDisplayExpr (lastIndent p) z
+                                          . nextBranch p . leaf (show op)
+                                          . nextBranch p . astDisplayExpr (nextIndent p) x
+                                          . nextBranch p . astDisplayExpr (nextIndent p) y
+                                          . lastBranch p . astDisplayExpr (lastIndent p) z
 
 astDisplayList :: Int -> (ShowS -> a -> ShowS) -> ShowS -> [a] -> ShowS
-astDisplayList i f p [x] = sameLine . f (sameIndent i p) x
+astDisplayList i f p [x] = sameBranch . f (sameIndent i p) x
 astDisplayList _ f p xs  = go xs
   where
     go []     = id
-    go [y]    = lastLine p . f (lastIndent p) y
-    go (y:ys) = nextLine p . f (nextIndent p) y . go ys
+    go [y]    = lastBranch p . f (lastIndent p) y
+    go (y:ys) = nextBranch p . f (nextIndent p) y . go ys

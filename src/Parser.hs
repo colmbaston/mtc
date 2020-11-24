@@ -1,5 +1,6 @@
 module Parser (parseProgram) where
 
+import SrcPos
 import ParserLib
 import Lexer
 import AST
@@ -172,23 +173,23 @@ atomExpr :: Parser Token Expr
 atomExpr = do sp <- srcPos
               tk <- peekToken
               case tk of
-                Just (TkLitInteger n) -> nextToken $> LitInteger sp n
-                Just (TkLitBoolean b) -> nextToken $> LitBoolean sp b
-                Just (TkIdent      i) -> nextToken *> atomIdent  sp i
+                Just (TkLitInteger n) -> nextToken $>  LitInteger sp n
+                Just (TkLitBoolean b) -> nextToken $>  LitBoolean sp b
+                Just (TkIdent      i) -> nextToken *>  atomIdent  sp i
                 Just  TkLParen        -> parens expr
-                Just  TkSubtraction   -> nextToken *> (applyNegation sp           <$> atomExpr)
+                Just  TkSubtraction   -> nextToken *> (atomNegation sp            <$> atomExpr)
                 Just  TkExclamation   -> nextToken *> (UnaryOp sp BooleanNegation <$> atomExpr)
                 _                     -> empty <?> "expected an expression"
-
-applyNegation :: SrcPos -> Expr -> Expr
-applyNegation sp (LitInteger _ n) = LitInteger sp (negate n)
-applyNegation sp  e               = UnaryOp sp IntegerNegation e
 
 atomIdent :: SrcPos -> String -> Parser Token Expr
 atomIdent sp i = do tk <- peekToken
                     case tk of
                       Just TkLParen -> Application sp i <$> parens funArgs
                       _             -> pure (Variable sp i)
+
+atomNegation :: SrcPos -> Expr -> Expr
+atomNegation spn (LitInteger spk k) | nextColumn spn == spk = LitInteger spn (negate k)
+atomNegation spn  e                                         = UnaryOp    spn IntegerNegation e
 
 funArgs :: Parser Token [Expr]
 funArgs = do tk <- peekToken
