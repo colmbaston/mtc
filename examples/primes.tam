@@ -1,7 +1,5 @@
   LOADL   0
   LOADL   0
-  LOADL   0
-  LOADL   0
   GETINT
   STORE   [SB+0]
   GETINT
@@ -19,13 +17,12 @@
   GTR
   NOT
   AND
-  JUMPIFZ #0
+  JUMPIFZ #1
   LOADL   2
   PUTINT
   LOADL   3
   STORE   [SB+0]
-  JUMP    #2
-#0:
+#1:
   LOADL   2
   LOAD    [SB+0]
   LOADL   2
@@ -40,36 +37,12 @@
   GTR
   NOT
   JUMPIFZ #3
-  LOADL   3
-  STORE   [SB+2]
-  LOADL   1
-  STORE   [SB+3]
-#4:
-  LOAD    [SB+3]
-  LOAD    [SB+2]
-  LOAD    [SB+2]
-  MUL
   LOAD    [SB+0]
-  GTR
-  NOT
-  AND
+  CALL    #isPrime
   JUMPIFZ #5
-  LOAD    [SB+2]
-  LOAD    [SB+0]
-  CALL    #divides
-  NOT
-  STORE   [SB+3]
-  LOAD    [SB+2]
-  LOADL   2
-  ADD
-  STORE   [SB+2]
-  JUMP    #4
-#5:
-  LOAD    [SB+3]
-  JUMPIFZ #7
   LOAD    [SB+0]
   PUTINT
-#7:
+#5:
   LOAD    [SB+0]
   LOADL   2
   ADD
@@ -81,12 +54,12 @@
   LOAD    [LB-2]
   LOAD    [LB-1]
   GTR
-  JUMPIFZ #8
+  JUMPIFZ #6
   LOAD    [LB-2]
-  JUMP    #9
-#8:
+  JUMP    #7
+#6:
   LOAD    [LB-1]
-#9:
+#7:
   RETURN  1 2
 #divides:
   LOAD    [LB-1]
@@ -97,3 +70,47 @@
   LOAD    [LB-1]
   EQL
   RETURN  1 2
+#trialDivision:
+  LOAD    [LB-1]
+  LOAD    [LB-2]
+  LOAD    [LB-2]
+  MUL
+  LSS
+  JUMPIFZ #8
+  LOADL   1
+  JUMP    #9
+#8:
+  LOAD    [LB-2]
+  LOAD    [LB-1]
+  CALL    #divides
+  NOT
+  LOAD    [LB-2]
+  LOADL   2
+  ADD
+  LOAD    [LB-1]
+  CALL    #trialDivision
+  AND
+#9:
+  RETURN  1 2
+#isPrime:
+  LOAD    [LB-1]
+  LOADL   2
+  LSS
+  JUMPIFZ #10
+  LOADL   0
+  JUMP    #11
+#10:
+  LOAD    [LB-1]
+  LOADL   2
+  EQL
+  LOADL   2
+  LOAD    [LB-1]
+  CALL    #divides
+  NOT
+  LOADL   3
+  LOAD    [LB-1]
+  CALL    #trialDivision
+  AND
+  OR
+#11:
+  RETURN  1 1
