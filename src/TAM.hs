@@ -150,6 +150,9 @@ type Stack     = Seq Int
 data Memory    = Memory { programCounter :: Int, localBase :: Int, stack :: Stack }
 type Machine m = StateT Memory (ExceptT ExecError m)
 
+stackPointer :: Memory -> Int
+stackPointer = Seq.length . stack
+
 emitError :: Monad m => ErrorDetails -> Machine m a
 emitError e = do pc <- programCounter <$> get
                  lift (throwE (ExecError pc e))
@@ -172,25 +175,28 @@ unOp op = pop >>= push . op >> increment
 binOp :: Monad m => (Int -> Int -> Int) -> Machine m ()
 binOp op = flip op <$> pop <*> pop >>= push >> increment
 
+absAddress :: Monad m => Address -> Machine m Int
+absAddress a = do mem <- get
+                  let i = case a of
+                            SB d -> d
+                            LB d -> d + localBase mem
+                  if 0 <= i && i < stackPointer mem
+                     then pure i
+                     else emitError (InvalidAddress a)
+
 load :: Monad m => Address -> Machine m ()
-load a = do mem <- get
-            let i = case a of
-                     SB d -> d
-                     LB d -> localBase mem + d
-            case Seq.lookup i (stack mem) of
+load a = do i <- absAddress a
+            s <- stack <$> get
+            case Seq.lookup i s of
               Nothing -> emitError (InvalidAddress a)
-              Just  x -> push x >> increment
+              Just  x -> push x
+            increment
 
 store :: Monad m => Address -> Machine m ()
-store a = do x   <- pop
-             mem <- get
-             let s = stack mem
-                 i = case a of
-                       SB d -> d
-                       LB d -> d + localBase mem
-             if 0 <= i && i < Seq.length s
-               then put (mem { stack = Seq.update i x s }) >> increment
-               else emitError (InvalidAddress a)
+store a = do x <- pop
+             i <- absAddress a
+             modify (\mem -> mem { stack = Seq.update i x (stack mem) })
+             increment
 
 jump :: Monad m => String -> JumpTable -> Machine m ()
 jump l jt = case M.lookup l jt of
@@ -198,7 +204,7 @@ jump l jt = case M.lookup l jt of
               Just pc -> modify (\mem -> mem { programCounter = pc })
 
 frameSize :: Monad m => Machine m Int
-frameSize = (\mem -> Seq.length (stack mem) - localBase mem) <$> get
+frameSize = (\mem -> stackPointer mem - localBase mem) <$> get
 
 getInt :: MonadIO m => Machine m Int
 getInt = do xs <- liftIO (putStr "input> " *> hFlush stdout *> getLine)
@@ -257,10 +263,10 @@ exec is = fmap stack <$> runExceptT (execStateT run (Memory 0 0 Seq.empty))
     step (JUMPIFZ l)  = pop >>= \x -> if x == 0 then jump l jt else increment
     step (LOAD  a)    = load  a
     step (STORE a)    = store a
-    step (CALL l)     = do lb <- Seq.length . stack <$> get
+    step (CALL l)     = do sp <- stackPointer <$> get
                            get >>= push .        localBase
                            get >>= push . (+1) . programCounter
-                           modify (\mem -> mem { localBase = lb })
+                           modify (\mem -> mem { localBase = sp })
                            jump l jt
     step (RETURN m n) = do xs <- Seq.replicateA m pop
                            fs <- frameSize
