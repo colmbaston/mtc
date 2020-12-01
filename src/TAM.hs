@@ -1,4 +1,16 @@
-module TAM (Address(..), TAM(..), formatTAM, parseTAM, exec, execWithMem, defaultMem, optimiseTAM) where
+module TAM
+(
+  Address(..),
+  TAM(..),
+  Memory(..),
+  formatTAM,
+  parseTAM,
+  exec,
+  execWithMem,
+  defaultMem,
+  optimiseTAM
+)
+where
 
 import ParserLib
 
