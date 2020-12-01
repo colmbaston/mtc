@@ -1,34 +1,34 @@
   LOADL   0
-#0:
+0:
   LOAD    [SB+0]
   LOADL   20
   GTR
   NOT
-  JUMPIFZ #1
+  JUMPIFZ 1
   LOAD    [SB+0]
-  CALL    #fact
+  CALL    fact
   PUTINT
   LOAD    [SB+0]
   LOADL   1
   ADD
   STORE   [SB+0]
-  JUMP    #0
-#1:
+  JUMP    0
+1:
   HALT
-#fact:
+fact:
   LOAD    [LB-1]
   LOADL   1
   GTR
   NOT
-  JUMPIFZ #2
+  JUMPIFZ 2
   LOADL   1
-  JUMP    #3
-#2:
+  JUMP    3
+2:
   LOAD    [LB-1]
   LOAD    [LB-1]
   LOADL   1
   SUB
-  CALL    #fact
+  CALL    fact
   MUL
-#3:
+3:
   RETURN  1 1

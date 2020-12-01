@@ -1,4 +1,4 @@
-module TAM (Address(..), TAM(..), formatTAM, parseTAM, exec, optimiseTAM) where
+module TAM (Address(..), TAM(..), formatTAM, parseTAM, exec, execWithMem, defaultMem, optimiseTAM) where
 
 import ParserLib
 
@@ -21,8 +21,9 @@ import Control.Monad.Trans.Class
 import Control.Monad.Trans.State
 import Control.Monad.Trans.Except
 
-data Address  = SB Int
-              | LB Int
+data Address  = Abs Int
+              | SB  Int
+              | LB  Int
               deriving (Eq, Show)
 
 data TAM      = LOADL Int
@@ -69,23 +70,26 @@ formatInst  LSS         = "  LSS"
 formatInst  GTR         = "  GTR"
 formatInst  GETINT      = "  GETINT"
 formatInst  PUTINT      = "  PUTINT"
-formatInst (LABEL    l) = '#' : l ++ ":"
-formatInst (JUMP     l) = "  JUMP    " ++ '#' : l
-formatInst (JUMPIFZ  l) = "  JUMPIFZ " ++ '#' : l
+formatInst (LABEL    l) = l ++ ":"
+formatInst (JUMP     l) = "  JUMP    " ++ l
+formatInst (JUMPIFZ  l) = "  JUMPIFZ " ++ l
 formatInst (LOAD     a) = "  LOAD    " ++ formatAddr a
 formatInst (STORE    a) = "  STORE   " ++ formatAddr a
-formatInst (CALL     l) = "  CALL    " ++ '#' : l
+formatInst (CALL     l) = "  CALL    " ++ l
 formatInst (RETURN m n) = "  RETURN  " ++ show m ++ ' ' : show n
 formatInst  HALT        = "  HALT"
 
 formatAddr :: Address -> String
-formatAddr a = "[" ++ r ++ (if d >= 0 then "+" else "") ++ show d ++ "]"
+formatAddr a = '[' : go ++ "]"
   where
-    r :: String
-    r = case a of SB _ -> "SB" ; LB _ -> "LB"
+    go :: String
+    go = case a of
+           Abs d ->         show   d
+           SB  d -> "SB" ++ signed d
+           LB  d -> "LB" ++ signed d
 
-    d :: Int
-    d = case a of SB x -> x    ; LB x -> x
+    signed :: Int -> String
+    signed n = (if n >= 0 then '+' else '-') : show (abs n)
 
 -- PARSING TAM CODE
 
@@ -111,6 +115,7 @@ inst =  (LOADL   <$  tokens "LOADL")   <*> (some inlineSpace *> integer)
     <|> (GETINT  <$  tokens "GETINT")
     <|> (PUTINT  <$  tokens "PUTINT")
     <|> (LABEL   <$> label <* token ':')
+    <|> (LABEL   <$  tokens "Label")   <*> (some inlineSpace *> label)
     <|> (JUMP    <$  tokens "JUMP")    <*> (some inlineSpace *> label)
     <|> (JUMPIFZ <$  tokens "JUMPIFZ") <*> (some inlineSpace *> label)
     <|> (LOAD    <$  tokens "LOAD")    <*> (some inlineSpace *> address)
@@ -120,13 +125,13 @@ inst =  (LOADL   <$  tokens "LOADL")   <*> (some inlineSpace *> integer)
     <|> (HALT    <$  tokens "HALT")
 
 address :: Parser Char Address
-address = token '[' *> many inlineSpace *> (register <|> SB <$> natural) <* many inlineSpace <* token ']'
+address = token '[' *> many inlineSpace *> (register <|> Abs <$> natural) <* many inlineSpace <* token ']'
 
 register :: Parser Char Address
 register = (tokens "SB" $> SB <|> tokens "LB" $> LB) <*> (many inlineSpace *> sign <*> (many inlineSpace *> natural))
 
 label :: Parser Char String
-label = token '#' *> some (sat nextToken isAlphaNum)
+label = some (sat nextToken isAlphaNum)
 
 -- EXECUTION MONAD
 
@@ -141,13 +146,13 @@ instance Show ExecError where
   showsPrec _ (ExecError pc e) = showString "execution error at instruction " . shows pc . showString ": "
                                . case e of
                                    InvalidAddress a -> showString "invalid address " . showString (formatAddr a)
-                                   InvalidLabel   l -> showString "invalid label #"  . showString l
+                                   InvalidLabel   l -> showString "invalid label "   . showString l
                                    BufferOverrun    -> showString "overran the instruction buffer"
                                    StackUnderflow   -> showString "stack underflow"
                                    DivZero          -> showString "division by zero"
 
 type Stack     = Seq Int
-data Memory    = Memory { programCounter :: Int, localBase :: Int, stack :: Stack }
+data Memory    = Memory { programCounter :: Int, stackBase :: Int, localBase :: Int, stack :: Stack }
 type Machine m = StateT Memory (ExceptT ExecError m)
 
 stackPointer :: Memory -> Int
@@ -158,16 +163,16 @@ emitError e = do pc <- programCounter <$> get
                  lift (throwE (ExecError pc e))
 
 increment :: Monad m => Machine m ()
-increment = modify (\mem -> mem { programCounter = programCounter mem + 1 })
+increment = modify (\m -> m { programCounter = programCounter m + 1 })
 
 push :: Monad m => Int -> Machine m ()
-push x = modify (\mem -> mem { stack = stack mem |> x })
+push x = modify (\m -> m { stack = stack m |> x })
 
 pop :: Monad m => Machine m Int
 pop = do xs <- stack <$> get
          case xs of
            Empty    -> emitError StackUnderflow
-           ys :|> y -> modify (\mem -> mem { stack = ys }) $> y
+           ys :|> y -> modify (\m -> m { stack = ys }) $> y
 
 unOp :: Monad m => (Int -> Int) -> Machine m ()
 unOp op = pop >>= push . op >> increment
@@ -176,11 +181,12 @@ binOp :: Monad m => (Int -> Int -> Int) -> Machine m ()
 binOp op = flip op <$> pop <*> pop >>= push >> increment
 
 absAddress :: Monad m => Address -> Machine m Int
-absAddress a = do mem <- get
+absAddress a = do m <- get
                   let i = case a of
-                            SB d -> d
-                            LB d -> d + localBase mem
-                  if 0 <= i && i < stackPointer mem
+                            Abs d -> d
+                            SB  d -> d + stackBase m
+                            LB  d -> d + localBase m
+                  if 0 <= i && i < stackPointer m
                      then pure i
                      else emitError (InvalidAddress a)
 
@@ -195,16 +201,16 @@ load a = do i <- absAddress a
 store :: Monad m => Address -> Machine m ()
 store a = do x <- pop
              i <- absAddress a
-             modify (\mem -> mem { stack = Seq.update i x (stack mem) })
+             modify (\m -> m { stack = Seq.update i x (stack m) })
              increment
 
 jump :: Monad m => String -> JumpTable -> Machine m ()
 jump l jt = case M.lookup l jt of
               Nothing -> emitError (InvalidLabel l)
-              Just pc -> modify (\mem -> mem { programCounter = pc })
+              Just pc -> modify (\m -> m { programCounter = pc })
 
 frameSize :: Monad m => Machine m Int
-frameSize = (\mem -> stackPointer mem - localBase mem) <$> get
+frameSize = (\m -> stackPointer m - localBase m) <$> get
 
 getInt :: MonadIO m => Machine m Int
 getInt = do xs <- liftIO (putStr "input> " *> hFlush stdout *> getLine)
@@ -224,8 +230,14 @@ jumpTable n js (      i : is) = fmap (i:) (jumpTable (n+1)            js  is)
 instArray :: [TAM] -> (Int, Array Int TAM)
 instArray is = let l = length is in (l, listArray (0, l-1) is)
 
+defaultMem :: Memory
+defaultMem = Memory { programCounter = 0, stackBase = 0, localBase = 0, stack = Seq.empty }
+
 exec :: [TAM] -> IO (Either ExecError Stack)
-exec is = fmap stack <$> runExceptT (execStateT run (Memory 0 0 Seq.empty))
+exec = execWithMem defaultMem
+
+execWithMem :: Memory -> [TAM] -> IO (Either ExecError Stack)
+execWithMem mem is = fmap stack <$> runExceptT (execStateT run mem)
   where
     jt  :: JumpTable
     ia  :: Array Int TAM
@@ -266,16 +278,16 @@ exec is = fmap stack <$> runExceptT (execStateT run (Memory 0 0 Seq.empty))
     step (CALL l)     = do sp <- stackPointer <$> get
                            get >>= push .        localBase
                            get >>= push . (+1) . programCounter
-                           modify (\mem -> mem { localBase = sp })
+                           modify (\m -> m { localBase = sp })
                            jump l jt
-    step (RETURN m n) = do xs <- Seq.replicateA m pop
+    step (RETURN s a) = do xs <- Seq.replicateA s pop
                            fs <- frameSize
                            replicateM_ (fs - 2) pop
                            ra <- pop
                            lb <- pop
-                           replicateM_ n pop
+                           replicateM_ a pop
                            mapM_ push (Seq.reverse xs)
-                           modify (\mem -> mem { programCounter = ra, localBase = lb })
+                           modify (\m -> m { programCounter = ra, localBase = lb })
     step (LABEL _)    = increment
     step  HALT        = pure ()
 

@@ -1,22 +1,22 @@
   LOADL   0
   GETINT
   STORE   [SB+0]
-#0:
+0:
   LOAD    [SB+0]
   LOADL   1
   GTR
-  JUMPIFZ #1
+  JUMPIFZ 1
   LOAD    [SB+0]
   PUTINT
   LOAD    [SB+0]
-  CALL    #next
+  CALL    next
   STORE   [SB+0]
-  JUMP    #0
-#1:
+  JUMP    0
+1:
   LOADL   1
   PUTINT
   HALT
-#even:
+even:
   LOAD    [LB-1]
   LOADL   2
   DIV
@@ -25,19 +25,19 @@
   LOAD    [LB-1]
   EQL
   RETURN  1 1
-#next:
+next:
   LOAD    [LB-1]
-  CALL    #even
-  JUMPIFZ #2
+  CALL    even
+  JUMPIFZ 2
   LOAD    [LB-1]
   LOADL   2
   DIV
-  JUMP    #3
-#2:
+  JUMP    3
+2:
   LOAD    [LB-1]
   LOADL   3
   MUL
   LOADL   1
   ADD
-#3:
+3:
   RETURN  1 1

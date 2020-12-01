@@ -2,38 +2,38 @@
   LOADL   0
   LOADL   1
   STORE   [SB+0]
-#0:
+0:
   LOAD    [SB+0]
   LOADL   10
   GTR
   NOT
-  JUMPIFZ #1
+  JUMPIFZ 1
   LOADL   1
   STORE   [SB+1]
-#2:
+2:
   LOAD    [SB+1]
   LOADL   10
   GTR
   NOT
-  JUMPIFZ #3
+  JUMPIFZ 3
   LOAD    [SB+0]
   LOAD    [SB+1]
-  CALL    #exp
+  CALL    exp
   PUTINT
   LOAD    [SB+1]
   LOADL   1
   ADD
   STORE   [SB+1]
-  JUMP    #2
-#3:
+  JUMP    2
+3:
   LOAD    [SB+0]
   LOADL   1
   ADD
   STORE   [SB+0]
-  JUMP    #0
-#1:
+  JUMP    0
+1:
   HALT
-#divides:
+divides:
   LOAD    [LB-1]
   LOAD    [LB-2]
   DIV
@@ -42,35 +42,35 @@
   LOAD    [LB-1]
   EQL
   RETURN  1 2
-#exp:
+exp:
   LOAD    [LB-1]
   LOADL   0
   GTR
   NOT
-  JUMPIFZ #4
+  JUMPIFZ 4
   LOADL   1
-  JUMP    #5
-#4:
+  JUMP    5
+4:
   LOAD    [LB-1]
   LOADL   1
   EQL
-  JUMPIFZ #6
+  JUMPIFZ 6
   LOAD    [LB-2]
-  JUMP    #5
-#6:
+  JUMP    5
+6:
   LOADL   2
   LOAD    [LB-1]
-  CALL    #divides
-  JUMPIFZ #8
+  CALL    divides
+  JUMPIFZ 8
   LOAD    [LB-2]
   LOAD    [LB-2]
   MUL
   LOAD    [LB-1]
   LOADL   2
   DIV
-  CALL    #exp
-  JUMP    #5
-#8:
+  CALL    exp
+  JUMP    5
+8:
   LOAD    [LB-2]
   LOAD    [LB-2]
   LOAD    [LB-2]
@@ -80,7 +80,7 @@
   SUB
   LOADL   2
   DIV
-  CALL    #exp
+  CALL    exp
   MUL
-#5:
+5:
   RETURN  1 2
