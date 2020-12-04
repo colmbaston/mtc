@@ -46,7 +46,7 @@ data Token = TkLet
            | TkLitInteger Int
            | TkLitBoolean Bool
            | TkIdent      String
-           deriving (Show, Eq)
+           deriving Eq
 
 tokenise :: String -> Either ParseError [(SrcPos, Token)]
 tokenise = fmap fst . parse (many (many space *> oneToken) <* many space <* etx <?> "unrecognised token") . annotate

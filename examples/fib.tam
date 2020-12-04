@@ -1,46 +1,46 @@
-  LOADL   0
-  LOADL   0
-  GETINT
-  STORE   [SB+0]
-0:
-  LOAD    [SB+1]
-  LOAD    [SB+0]
-  GTR
-  NOT
-  JUMPIFZ 1
-  LOAD    [SB+1]
-  CALL    fib
-  PUTINT
-  LOAD    [SB+1]
-  LOADL   1
-  ADD
-  STORE   [SB+1]
-  JUMP    0
-1:
-  HALT
-fib:
-  LOAD    [LB-1]
-  LOADL   1
-  LSS
-  JUMPIFZ 2
-  LOADL   0
-  JUMP    3
-2:
-  LOAD    [LB-1]
-  LOADL   1
-  EQL
-  JUMPIFZ 4
-  LOADL   1
-  JUMP    3
-4:
-  LOAD    [LB-1]
-  LOADL   1
-  SUB
-  CALL    fib
-  LOAD    [LB-1]
-  LOADL   2
-  SUB
-  CALL    fib
-  ADD
-3:
-  RETURN  1 1
+LOADL   0
+LOADL   0
+GETINT
+STORE   [SB+0]
+Label   0
+LOAD    [SB+1]
+LOAD    [SB+0]
+GTR
+NOT
+JUMPIFZ 1
+LOAD    [SB+1]
+CALL    fib
+PUTINT
+LOAD    [SB+1]
+LOADL   1
+ADD
+STORE   [SB+1]
+JUMP    0
+Label   1
+HALT
+Label   fib
+LOAD    [LB-1]
+LOADL   1
+LSS
+JUMPIFZ 2
+LOADL   0
+JUMP    3
+Label   2
+LOAD    [LB-1]
+LOADL   1
+EQL
+JUMPIFZ 4
+LOADL   1
+JUMP    3
+Label   4
+LOAD    [LB-1]
+LOADL   1
+SUB
+CALL    fib
+LOAD    [LB-1]
+LOADL   2
+SUB
+CALL    fib
+ADD
+Label   3
+RETURN  1 1

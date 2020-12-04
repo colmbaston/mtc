@@ -1,34 +1,34 @@
-  LOADL   0
-0:
-  LOAD    [SB+0]
-  LOADL   20
-  GTR
-  NOT
-  JUMPIFZ 1
-  LOAD    [SB+0]
-  CALL    fact
-  PUTINT
-  LOAD    [SB+0]
-  LOADL   1
-  ADD
-  STORE   [SB+0]
-  JUMP    0
-1:
-  HALT
-fact:
-  LOAD    [LB-1]
-  LOADL   1
-  GTR
-  NOT
-  JUMPIFZ 2
-  LOADL   1
-  JUMP    3
-2:
-  LOAD    [LB-1]
-  LOAD    [LB-1]
-  LOADL   1
-  SUB
-  CALL    fact
-  MUL
-3:
-  RETURN  1 1
+LOADL   0
+Label   0
+LOAD    [SB+0]
+LOADL   20
+GTR
+NOT
+JUMPIFZ 1
+LOAD    [SB+0]
+CALL    fact
+PUTINT
+LOAD    [SB+0]
+LOADL   1
+ADD
+STORE   [SB+0]
+JUMP    0
+Label   1
+HALT
+Label   fact
+LOAD    [LB-1]
+LOADL   1
+GTR
+NOT
+JUMPIFZ 2
+LOADL   1
+JUMP    3
+Label   2
+LOAD    [LB-1]
+LOAD    [LB-1]
+LOADL   1
+SUB
+CALL    fact
+MUL
+Label   3
+RETURN  1 1

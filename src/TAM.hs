@@ -68,28 +68,28 @@ formatTAM :: [TAM] -> String
 formatTAM = unlines . map formatInst
 
 formatInst :: TAM -> String
-formatInst (LOADL    n) = "  LOADL   " ++ show n
-formatInst  ADD         = "  ADD"
-formatInst  SUB         = "  SUB"
-formatInst  MUL         = "  MUL"
-formatInst  DIV         = "  DIV"
-formatInst  NEG         = "  NEG"
-formatInst  AND         = "  AND"
-formatInst  OR          = "  OR"
-formatInst  NOT         = "  NOT"
-formatInst  EQL         = "  EQL"
-formatInst  LSS         = "  LSS"
-formatInst  GTR         = "  GTR"
-formatInst  GETINT      = "  GETINT"
-formatInst  PUTINT      = "  PUTINT"
-formatInst (LABEL    l) = l ++ ":"
-formatInst (JUMP     l) = "  JUMP    " ++ l
-formatInst (JUMPIFZ  l) = "  JUMPIFZ " ++ l
-formatInst (LOAD     a) = "  LOAD    " ++ formatAddr a
-formatInst (STORE    a) = "  STORE   " ++ formatAddr a
-formatInst (CALL     l) = "  CALL    " ++ l
-formatInst (RETURN m n) = "  RETURN  " ++ show m ++ ' ' : show n
-formatInst  HALT        = "  HALT"
+formatInst (LOADL    n) = "LOADL   " ++ show n
+formatInst  ADD         = "ADD"
+formatInst  SUB         = "SUB"
+formatInst  MUL         = "MUL"
+formatInst  DIV         = "DIV"
+formatInst  NEG         = "NEG"
+formatInst  AND         = "AND"
+formatInst  OR          = "OR"
+formatInst  NOT         = "NOT"
+formatInst  EQL         = "EQL"
+formatInst  LSS         = "LSS"
+formatInst  GTR         = "GTR"
+formatInst  GETINT      = "GETINT"
+formatInst  PUTINT      = "PUTINT"
+formatInst (LABEL    l) = "Label   " ++ l
+formatInst (JUMP     l) = "JUMP    " ++ l
+formatInst (JUMPIFZ  l) = "JUMPIFZ " ++ l
+formatInst (LOAD     a) = "LOAD    " ++ formatAddr a
+formatInst (STORE    a) = "STORE   " ++ formatAddr a
+formatInst (CALL     l) = "CALL    " ++ l
+formatInst (RETURN m n) = "RETURN  " ++ show m ++ ' ' : show n
+formatInst  HALT        = "HALT"
 
 formatAddr :: Address -> String
 formatAddr a = '[' : go ++ "]"
@@ -112,29 +112,28 @@ code :: Parser Char [TAM]
 code = (:) <$> inst <*> (many inlineSpace *> token '\n' *> many space *> code) <|> pure []
 
 inst :: Parser Char TAM
-inst =  (LOADL   <$  tokens "LOADL")   <*> (some inlineSpace *> integer)
-    <|> (ADD     <$  tokens "ADD")
-    <|> (SUB     <$  tokens "SUB")
-    <|> (MUL     <$  tokens "MUL")
-    <|> (DIV     <$  tokens "DIV")
-    <|> (NEG     <$  tokens "NEG")
-    <|> (AND     <$  tokens "AND")
-    <|> (OR      <$  tokens "OR")
-    <|> (NOT     <$  tokens "NOT")
-    <|> (EQL     <$  tokens "EQL")
-    <|> (LSS     <$  tokens "LSS")
-    <|> (GTR     <$  tokens "GTR")
-    <|> (GETINT  <$  tokens "GETINT")
-    <|> (PUTINT  <$  tokens "PUTINT")
-    <|> (LABEL   <$> label <* token ':')
-    <|> (LABEL   <$  tokens "Label")   <*> (some inlineSpace *> label)
-    <|> (JUMP    <$  tokens "JUMP")    <*> (some inlineSpace *> label)
-    <|> (JUMPIFZ <$  tokens "JUMPIFZ") <*> (some inlineSpace *> label)
-    <|> (LOAD    <$  tokens "LOAD")    <*> (some inlineSpace *> address)
-    <|> (STORE   <$  tokens "STORE")   <*> (some inlineSpace *> address)
-    <|> (CALL    <$  tokens "CALL")    <*> (some inlineSpace *> label)
-    <|> (RETURN  <$  tokens "RETURN")  <*> (some inlineSpace *> natural) <*> (some inlineSpace *> natural)
-    <|> (HALT    <$  tokens "HALT")
+inst =  (LOADL   <$ tokens "LOADL")   <*> (some inlineSpace *> integer)
+    <|> (ADD     <$ tokens "ADD")
+    <|> (SUB     <$ tokens "SUB")
+    <|> (MUL     <$ tokens "MUL")
+    <|> (DIV     <$ tokens "DIV")
+    <|> (NEG     <$ tokens "NEG")
+    <|> (AND     <$ tokens "AND")
+    <|> (OR      <$ tokens "OR")
+    <|> (NOT     <$ tokens "NOT")
+    <|> (EQL     <$ tokens "EQL")
+    <|> (LSS     <$ tokens "LSS")
+    <|> (GTR     <$ tokens "GTR")
+    <|> (GETINT  <$ tokens "GETINT")
+    <|> (PUTINT  <$ tokens "PUTINT")
+    <|> (LABEL   <$ tokens "Label")   <*> (some inlineSpace *> label)
+    <|> (JUMP    <$ tokens "JUMP")    <*> (some inlineSpace *> label)
+    <|> (JUMPIFZ <$ tokens "JUMPIFZ") <*> (some inlineSpace *> label)
+    <|> (LOAD    <$ tokens "LOAD")    <*> (some inlineSpace *> address)
+    <|> (STORE   <$ tokens "STORE")   <*> (some inlineSpace *> address)
+    <|> (CALL    <$ tokens "CALL")    <*> (some inlineSpace *> label)
+    <|> (RETURN  <$ tokens "RETURN")  <*> (some inlineSpace *> natural) <*> (some inlineSpace *> natural)
+    <|> (HALT    <$ tokens "HALT")
 
 address :: Parser Char Address
 address = token '[' *> many inlineSpace *> (register <|> Abs <$> natural) <* many inlineSpace <* token ']'
@@ -143,7 +142,7 @@ register :: Parser Char Address
 register = (tokens "SB" $> SB <|> tokens "LB" $> LB) <*> (many inlineSpace *> sign <*> (many inlineSpace *> natural))
 
 label :: Parser Char String
-label = some (sat nextToken isAlphaNum)
+label = some (sat nextToken (not . isSpace))
 
 -- EXECUTION MONAD
 
@@ -318,9 +317,9 @@ optimiseTAM = fixedPoint (cullLabels . mergeLabels . peephole)
     peephole (LOADL a : JUMPIFZ b : xs)           | a == 0    =     peephole (JUMP  b : xs)
                                                   | otherwise =     peephole            xs
     peephole (LOAD _  : JUMPIFZ a : LABEL b : xs) | a == b    =     peephole (LABEL b : xs)
-    peephole (x : NEG       : NEG     : xs)                   =     peephole (x       : xs)
-    peephole (x : NOT       : NOT     : xs)       | boolOp x  =     peephole (x       : xs)
-    peephole (x                       : xs)                   = x : peephole            xs
+    peephole (x       : NEG       : NEG     : xs)             =     peephole (x       : xs)
+    peephole (x       : NOT       : NOT     : xs) | boolOp x  =     peephole (x       : xs)
+    peephole (x                             : xs)             = x : peephole            xs
 
     mergeLabels :: [TAM] -> [TAM]
     mergeLabels = fixedPoint (\is -> foldr (mapMaybe . uncurry relabel) is (alias (zip is (tail is))))
