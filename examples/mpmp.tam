@@ -1,0 +1,106 @@
+LOADL   1
+LOADL   4
+LOADL   3
+Label   0
+LOAD    [SB+2]
+LOADL   5000
+GTR
+NOT
+JUMPIFZ 1
+Label   2
+LOAD    [SB+2]
+CALL    isPrime
+NOT
+JUMPIFZ 3
+LOAD    [SB+2]
+LOADL   2
+ADD
+STORE   [SB+2]
+JUMP    2
+Label   3
+LOAD    [SB+1]
+LOAD    [SB+2]
+LOAD    [SB+2]
+MUL
+ADD
+STORE   [SB+1]
+LOAD    [SB+0]
+LOADL   1
+ADD
+STORE   [SB+0]
+LOAD    [SB+0]
+LOAD    [SB+1]
+CALL    divides
+JUMPIFZ 5
+LOAD    [SB+0]
+PUTINT
+LOAD    [SB+1]
+PUTINT
+Label   5
+LOAD    [SB+2]
+LOADL   2
+ADD
+STORE   [SB+2]
+JUMP    0
+Label   1
+HALT
+Label   divides
+LOAD    [LB-1]
+LOAD    [LB-2]
+DIV
+LOAD    [LB-2]
+MUL
+LOAD    [LB-1]
+EQL
+RETURN  1 2
+Label   trialDivision
+LOAD    [LB-1]
+LOAD    [LB-2]
+LOAD    [LB-2]
+MUL
+LSS
+JUMPIFZ 6
+LOADL   1
+JUMP    7
+Label   6
+LOAD    [LB-2]
+LOAD    [LB-1]
+CALL    divides
+JUMPIFZ 8
+LOADL   0
+JUMP    7
+Label   8
+LOAD    [LB-2]
+LOADL   2
+ADD
+LOAD    [LB-1]
+CALL    trialDivision
+Label   7
+RETURN  1 2
+Label   isPrime
+LOAD    [LB-1]
+LOADL   2
+LSS
+JUMPIFZ 10
+LOADL   0
+JUMP    11
+Label   10
+LOAD    [LB-1]
+LOADL   2
+EQL
+JUMPIFZ 12
+LOADL   1
+JUMP    11
+Label   12
+LOADL   2
+LOAD    [LB-1]
+CALL    divides
+JUMPIFZ 14
+LOADL   0
+JUMP    11
+Label   14
+LOADL   3
+LOAD    [LB-1]
+CALL    trialDivision
+Label   11
+RETURN  1 1
