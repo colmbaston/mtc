@@ -149,7 +149,7 @@ astDisplayComm p (Block cs)     = node "Block"    . astDisplayList 9 astDisplayC
 
 astDisplayExpr :: ShowS -> Expr -> ShowS
 astDisplayExpr _ (LitInteger _ n)         = node "LitInteger" . sameBranch . leaf (show n)
-astDisplayExpr _ (LitBoolean _ b)         = node "LitBoolean" . sameBranch . leaf (let c:cs = show b in toLower c : cs)
+astDisplayExpr _ (LitBoolean _ b)         = node "LitBoolean" . sameBranch . leaf (map toLower (show b))
 astDisplayExpr _ (Variable   _ v)         = node "Variable"   . sameBranch . leaf v
 astDisplayExpr p (Application _ f as)     = node "Application"
                                           . nextBranch p . leaf f

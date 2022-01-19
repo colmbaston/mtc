@@ -253,7 +253,7 @@ execWithMem mem is = fmap stack <$> runExceptT (execStateT run mem)
     jt  :: JumpTable
     ia  :: Array Int TAM
     len :: Int
-    (jt, (len, ia)) = fmap instArray (jumpTable 0 M.empty is)
+    (jt, (len, ia)) = instArray <$> jumpTable 0 M.empty is
 
     run :: MonadIO m => Machine m ()
     run = do pc <- programCounter <$> get
